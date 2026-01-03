@@ -11,42 +11,35 @@ import (
 
 func TestNew_ReturnsCorrectFormatter(t *testing.T) {
 	tests := []struct {
-		format string
-		want   string
+		format   string
+		wantType string
 	}{
-		{"json", "*output.JSONFormatter"},
-		{"markdown", "*output.MarkdownFormatter"},
-		{"md", "*output.MarkdownFormatter"},
-		{"pretty", "*output.PrettyFormatter"},
-		{"", "*output.PrettyFormatter"},
-		{"unknown", "*output.PrettyFormatter"},
+		{"json", "JSONFormatter"},
+		{"markdown", "MarkdownFormatter"},
+		{"md", "MarkdownFormatter"},
+		{"pretty", "PrettyFormatter"},
+		{"", "PrettyFormatter"},
+		{"unknown", "PrettyFormatter"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.format, func(t *testing.T) {
 			f := New(tt.format)
-			got := strings.TrimPrefix(strings.TrimPrefix(
-				strings.Split(strings.TrimPrefix(
-					strings.Replace(
-						strings.Replace(
-							string(rune(f.(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(interface{}).(Formatter))), "", ""), "", ""), " ")[0], ""), "")
 
-			// Simpler type check
-			switch tt.want {
-			case "*output.JSONFormatter":
+			switch tt.wantType {
+			case "JSONFormatter":
 				if _, ok := f.(*JSONFormatter); !ok {
-					t.Errorf("New(%q) = %T, want %s", tt.format, f, tt.want)
+					t.Errorf("New(%q) = %T, want *JSONFormatter", tt.format, f)
 				}
-			case "*output.MarkdownFormatter":
+			case "MarkdownFormatter":
 				if _, ok := f.(*MarkdownFormatter); !ok {
-					t.Errorf("New(%q) = %T, want %s", tt.format, f, tt.want)
+					t.Errorf("New(%q) = %T, want *MarkdownFormatter", tt.format, f)
 				}
-			case "*output.PrettyFormatter":
+			case "PrettyFormatter":
 				if _, ok := f.(*PrettyFormatter); !ok {
-					t.Errorf("New(%q) = %T, want %s", tt.format, f, tt.want)
+					t.Errorf("New(%q) = %T, want *PrettyFormatter", tt.format, f)
 				}
 			}
-			_ = got // suppress unused warning
 		})
 	}
 }
@@ -291,16 +284,17 @@ func TestPrettyFormatter_PowerColorByUsage(t *testing.T) {
 	f := &PrettyFormatter{}
 
 	tests := []struct {
+		name  string
 		power float64
-		color string // expected color in output
+		color string
 	}{
-		{500, BrightGreen},   // Low power
-		{3000, BrightYellow}, // Medium power
-		{6000, BrightRed},    // High power
+		{"low power", 500, BrightGreen},
+		{"medium power", 3000, BrightYellow},
+		{"high power", 6000, BrightRed},
 	}
 
 	for _, tt := range tests {
-		t.Run(string(rune(int(tt.power))), func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
 			m := &models.LiveMeasurement{
 				Timestamp: time.Now(),
 				Power:     tt.power,
