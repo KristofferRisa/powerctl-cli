@@ -3,9 +3,9 @@
 A beautiful command-line tool for monitoring your Tibber power consumption and electricity prices.
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/kristofferrisa/tibber-cli?style=flat-square" alt="Release">
-  <img src="https://img.shields.io/github/actions/workflow/status/kristofferrisa/tibber-cli/test.yml?style=flat-square" alt="Tests">
-  <img src="https://img.shields.io/github/license/kristofferrisa/tibber-cli?style=flat-square" alt="License">
+  <img src="https://img.shields.io/github/v/release/kristofferrisa/tibber-cli" alt="Release">
+  <img src="https://img.shields.io/github/actions/workflow/status/kristofferrisa/tibber-cli/test.yml" alt="Tests">
+  <img src="https://img.shields.io/github/license/kristofferrisa/tibber-cli" alt="License">
 </p>
 
 ## Features
