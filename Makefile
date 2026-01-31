@@ -6,11 +6,16 @@ BINARY=powerctl
 # Build directory
 DIST=dist
 
-# Version (from git tag or commit)
+# Version info
 VERSION=$(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+GIT_COMMIT=$(shell git rev-parse HEAD 2>/dev/null || echo "unknown")
+BUILD_DATE=$(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 
 # Build flags
-LDFLAGS=-ldflags "-s -w -X main.version=$(VERSION)"
+LDFLAGS=-ldflags "-s -w \
+	-X github.com/kristofferrisa/powerctl-cli/internal/commands.Version=$(VERSION) \
+	-X github.com/kristofferrisa/powerctl-cli/internal/commands.GitCommit=$(GIT_COMMIT) \
+	-X github.com/kristofferrisa/powerctl-cli/internal/commands.BuildDate=$(BUILD_DATE)"
 
 # Default target
 build:
