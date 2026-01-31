@@ -37,12 +37,12 @@ make build
 
 2. **Run setup wizard:**
    ```bash
-   tibber config init
+   powerctl config init
    ```
 
 3. **View your home:**
    ```bash
-   tibber home
+   powerctl home
    ```
 
 ## Usage
@@ -52,25 +52,35 @@ make build
 **Option 1: Environment variable (recommended)**
 ```bash
 export TIBBER_TOKEN="your-token-here"
-tibber home
+powerctl home
 ```
 
 **Option 2: Config file**
 ```bash
-tibber config init  # Interactive setup
+powerctl config init  # Interactive setup
 # or manually edit ~/.tibber/config.yaml
 ```
 
 **Option 3: Command flag**
 ```bash
-tibber --config /path/to/config.yaml home
+powerctl --config /path/to/config.yaml home
 ```
 
 ### Commands
 
+#### Check Version
+```bash
+powerctl version
+```
+```
+powerctl-cli version 1.0.0
+Git commit: a1b2c3d
+Built: 2026-01-31T10:30:00Z
+```
+
 #### View Home Information
 ```bash
-tibber home
+powerctl home
 ```
 ```
 ⚡ My House
@@ -91,7 +101,7 @@ tibber home
 
 #### Check Electricity Prices
 ```bash
-tibber prices
+powerctl prices
 ```
 ```
 ⚡ Electricity Prices
@@ -107,7 +117,7 @@ tibber prices
 
 #### Stream Live Power Consumption
 ```bash
-tibber live
+powerctl live
 ```
 ```
 ⚡ Live Power
@@ -132,12 +142,12 @@ Default output is beautiful colored CLI. Change format with `--format`:
 
 **JSON** (for scripting/piping):
 ```bash
-tibber prices --format json | jq '.current.total'
+powerctl prices --format json | jq '.current.total'
 ```
 
 **Markdown** (for AI/documentation):
 ```bash
-tibber home --format markdown
+powerctl home --format markdown
 ```
 
 ## Configuration File
@@ -152,12 +162,12 @@ format: "pretty"                      # Options: pretty, json, markdown
 
 View current config:
 ```bash
-tibber config show
+powerctl config show
 ```
 
 Update a value:
 ```bash
-tibber config set format json
+powerctl config set format json
 ```
 
 ## Development
@@ -190,7 +200,7 @@ make lint           # Run linter (requires golangci-lint)
 ## Troubleshooting
 
 **"No API token found"**
-- Set `TIBBER_TOKEN` environment variable or run `tibber config init`
+- Set `TIBBER_TOKEN` environment variable or run `powerctl config init`
 
 **"Pulse not enabled"**
 - Ensure your Tibber Pulse is connected and active
