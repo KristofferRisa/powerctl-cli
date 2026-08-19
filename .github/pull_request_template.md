@@ -1,8 +1,22 @@
 # Pull Request
 
-## Description
+## Related Issue
 
-Brief description of changes.
+<!-- Required. Every PR should trace back to an issue that carries the Goal,
+     Plan and Tasks. Use "Closes #N" only if the issue is fully resolved by
+     this PR; otherwise use "Relates to #N". -->
+
+Closes #
+
+## Goal
+
+<!-- Restate the goal from the linked issue in one or two sentences, and note
+     any way this PR deviates from the plan agreed there. -->
+
+## Changes Made
+
+- Change 1
+- Change 2
 
 ## Type of Change
 
@@ -14,16 +28,18 @@ Brief description of changes.
 - [ ] Code refactoring
 - [ ] CI/CD changes
 
-## Changes Made
+## Tasks
 
-- Change 1
-- Change 2
-- Change 3
+<!-- Mirror the task list from the linked issue so reviewers can see what's
+     done and what's intentionally left. -->
+
+- [ ] ...
+- [ ] ...
 
 ## Testing
 
 - [ ] Unit tests added/updated
-- [ ] All tests pass locally (`go test ./...`)
+- [ ] `go test ./...` passes locally
 - [ ] Tested on multiple platforms (if applicable)
 - [ ] Manual testing completed
 
@@ -35,22 +51,26 @@ Brief description of changes.
 
 ## Checklist
 
-- [ ] Code follows the project's style guidelines
+- [ ] `gofmt -s -l .` reports nothing
+- [ ] `go vet ./...` is clean
 - [ ] Self-review of code completed
-- [ ] Comments added for complex logic
+- [ ] Comments added for non-obvious logic
 - [ ] Documentation updated (if needed)
+- [ ] `--format json` output remains stable, or the break is called out above
 - [ ] No new warnings or errors introduced
-- [ ] Related issues linked
 
-## Related Issues
+## AI Assistance
 
-Fixes #(issue number)
-Relates to #(issue number)
+<!-- AI-assisted contributions are welcome — see CONTRIBUTING.md. Just be
+     explicit, and make sure you've reviewed and tested the result yourself. -->
+
+- [ ] AI tooling was used for part or all of this change
+- [ ] I have read, tested and can explain every line I'm submitting
 
 ## Screenshots (if applicable)
 
-Add screenshots or terminal output if relevant.
+Terminal output or screenshots, if relevant.
 
 ## Additional Notes
 
-Any additional information for reviewers.
+Anything else reviewers should know.
