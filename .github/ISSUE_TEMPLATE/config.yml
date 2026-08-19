@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/kristofferrisa/powerctl-cli/blob/main/.github/SECURITY.md
+    about: Please report security issues privately — see the security policy.
+  - name: Tibber API documentation
+    url: https://developer.tibber.com/docs/overview
+    about: For questions about the Tibber API itself rather than this CLI.

@@ -1,10 +1,14 @@
 ---
 name: Bug Report
-about: Report a bug to help us improve Sky CLI
+about: Report a bug to help us improve powerctl
 title: "[BUG] "
 labels: bug
 assignees: ""
 ---
+
+# Goal
+
+What were you trying to do when you hit this?
 
 ## Bug Description
 
@@ -12,7 +16,7 @@ A clear and concise description of the bug.
 
 ## Steps to Reproduce
 
-1. Run command: `sky ...`
+1. Run command: `powerctl ...`
 2. With flags: `--format ...`
 3. Expected: ...
 4. Actual: ...
@@ -21,7 +25,7 @@ A clear and concise description of the bug.
 
 - **OS**: [e.g., macOS 14.0, Ubuntu 22.04, Windows 11]
 - **Architecture**: [e.g., x86_64, arm64]
-- **Sky CLI Version**: [run `sky version`]
+- **powerctl version**: [run `powerctl version`]
 - **Go Version**: [run `go version` if building from source]
 
 ## Command Output
@@ -38,14 +42,14 @@ What should have happened.
 
 What actually happened.
 
-## Additional Context
-
-Any additional information, screenshots, or configuration files that might help.
-
 ## Configuration
 
-If relevant, share your `~/.sky/config.yaml`:
+If relevant, share your `~/.tibber/config.yaml`:
 
 ```yaml
-# Paste relevant config here (remove sensitive data)
+# Paste relevant config here — REMOVE your token first
 ```
+
+## Additional Context
+
+Any additional information, screenshots, or logs that might help.

@@ -212,13 +212,20 @@ make lint           # Run linter (requires golangci-lint)
 
 ## Contributing
 
-Contributions welcome! Please read [ARCHITECTURE.md](ARCHITECTURE.md) for code structure details.
+Contributions welcome — including AI-assisted ones. Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) for the workflow and
+[ARCHITECTURE.md](ARCHITECTURE.md) for code structure details.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat-amazing-feature`)
-3. Commit changes (`git commit -m 'Add amazing feature'`)
-4. Push to branch (`git push origin feat-amazing-feature`)
-5. Open a Pull Request
+1. Open an issue describing the **Goal**, **Plan** and **Tasks** (the
+   [task template](.github/ISSUE_TEMPLATE/task.md) has the structure)
+2. Fork the repository
+3. Create a feature branch (`git checkout -b feat-amazing-feature`)
+4. Commit changes (`git commit -m 'Add amazing feature'`)
+5. Push to branch (`git push origin feat-amazing-feature`)
+6. Open a Pull Request linking back to the issue
+
+Found a security issue? Please report it privately — see the
+[security policy](.github/SECURITY.md).
 
 ## License
 

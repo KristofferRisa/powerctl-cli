@@ -1,35 +1,43 @@
 ---
 name: Feature Request
-about: Suggest a new feature or enhancement for Sky CLI
+about: Suggest a new feature or enhancement for powerctl
 title: "[FEATURE] "
 labels: enhancement
 assignees: ""
 ---
 
-## Feature Description
+# Goal
 
-A clear and concise description of the feature you'd like to see.
+What outcome do you want, and why? Describe the end state rather than the
+implementation.
 
 ## Use Case
 
-Describe the problem this feature would solve or the workflow it would improve.
+The problem this solves or the workflow it improves.
 
 **Example scenario:**
 As a user, I want to [do something] so that [achieve goal].
 
 ## Proposed Solution
 
-Describe how you envision this feature working.
+How you envision this working.
 
-**Example:**
+**Command surface:**
 
 ```bash
-sky [new-command] --option value
+powerctl [new-command] --option value
 ```
+
+**Output shape:** what should `--format json` return? That output is the
+contract scripts and agents depend on, so it's worth sketching.
 
 ## Alternatives Considered
 
-Have you considered any alternative solutions or workarounds?
+Any alternative solutions or workarounds you've considered.
+
+## Out of Scope
+
+Anything deliberately excluded, to keep the change reviewable.
 
 ## Additional Context
 
@@ -37,4 +45,5 @@ Any additional information, mockups, or examples from other tools.
 
 ## Implementation Ideas
 
-If you have ideas about how this could be implemented, share them here (optional).
+Ideas about how this could be built (optional). If you'd like to implement it
+yourself, say so — see [CONTRIBUTING.md](../../CONTRIBUTING.md).
