@@ -26,7 +26,8 @@ powerctl-cli/
 │   │   ├── config.go            # `powerctl config` - setup wizard
 │   │   ├── home.go              # `powerctl home`
 │   │   ├── prices.go            # `powerctl prices`
-│   │   └── live.go              # `powerctl live`
+│   │   ├── live.go              # `powerctl live`
+│   │   └── version.go           # `powerctl version`
 │   ├── config/
 │   │   └── config.go            # Configuration loading
 │   ├── models/
@@ -39,6 +40,8 @@ powerctl-cli/
 ├── go.mod
 ├── go.sum
 ├── Makefile
+├── README.md
+├── CONTRIBUTING.md
 └── ARCHITECTURE.md
 ```
 
@@ -62,10 +65,10 @@ Configuration resolution order (first wins):
 
 1. Command-line flags
 2. `TIBBER_TOKEN` environment variable
-3. Config file (`~/.powerctl/config.yaml`)
+3. Config file (`~/.tibber/config.yaml`)
 
 ```yaml
-# ~/.powerctl/config.yaml
+# ~/.tibber/config.yaml
 token: "your-api-token"
 home_id: "optional-home-id"      # Skip home selection
 format: "markdown"               # Default output format
@@ -97,20 +100,26 @@ format: "markdown"               # Default output format
 | `home` | - | Home info | 0=OK, 1=Error |
 | `prices` | - | Price list | 0=OK, 1=Error |
 | `live` | `--home-id` | Stream | 0=Clean exit, 1=Error |
+| `version` | - | Version, commit, build date | 0=OK |
 
 ### Output Formatters (`internal/output/`)
 
 ```go
 type Formatter interface {
-    FormatHome(home *models.Home) string
-    FormatPrices(prices []models.Price) string
+    FormatHome(home *models.HomeResponse) string
+    FormatHomes(homes []models.HomeResponse) string
+    FormatPrices(prices *models.PriceInfo, homeID string) string
     FormatLiveMeasurement(m *models.LiveMeasurement) string
 }
 ```
 
+Adding a method to this interface means implementing it in all three
+formatters below — there is no embedded default.
+
 Three implementations:
 - `PrettyFormatter` - Beautiful CLI output with colors (default)
-- `JSONFormatter` - Compact JSON, one object per line for streaming
+- `JSONFormatter` - Indented JSON, except `FormatLiveMeasurement` which is
+  compact (one object per line) for streaming
 - `MarkdownFormatter` - Tables and headers, AI-readable
 
 ## Data Flow
@@ -139,8 +148,8 @@ Three implementations:
 
 | Type | URL |
 |------|-----|
-| GraphQL | `https://api.powerctl.com/v1-beta/gql` |
-| WebSocket | `wss://websocket-api.powerctl.com/v1-beta/gql/subscriptions` |
+| GraphQL | `https://api.tibber.com/v1-beta/gql` |
+| WebSocket | `wss://websocket-api.tibber.com/v1-beta/gql/subscriptions` |
 
 ### Authentication
 
@@ -182,6 +191,7 @@ build-all:
 | `spf13/cobra` | CLI framework | Industry standard (kubectl, hugo) |
 | `spf13/viper` | Config loading | Handles env + file + flags |
 | `nhooyr/websocket` | WebSocket | Pure Go, well maintained |
+| `gopkg.in/yaml.v3` | Config file writing | Used by `config init`/`config set` |
 
 ## Testing Strategy
 
@@ -189,10 +199,10 @@ build-all:
 internal/
 ├── api/
 │   └── client_test.go       # Mock HTTP responses
-├── commands/
-│   └── prices_test.go       # Integration tests
+├── config/
+│   └── config_test.go       # Config resolution order
 └── output/
-    └── formatter_test.go    # Golden file tests
+    └── formatter_test.go    # Formatter output assertions
 ```
 
 Demo token for testing: `5K4MVS-OjfWhK_4yrjOlFe1F6kJXPVf7eQYggo8ebAE`
