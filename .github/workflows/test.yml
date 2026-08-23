@@ -45,7 +45,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        go: ["1.23.x", "1.22.x"]
+        go: ["1.23.x"]
 
     steps:
       - name: Checkout code
@@ -73,7 +73,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.go == '1.23.x'
         uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.txt
+          files: ./coverage.txt
           fail_ci_if_error: false
           token: ${{ secrets.CODECOV_TOKEN }}
 
