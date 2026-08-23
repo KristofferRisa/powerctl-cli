@@ -38,9 +38,8 @@ issue on merge.
 
 ## Development setup
 
-You need Go 1.23 or newer (`go.mod` sets `go 1.23.0`). The CI matrix also
-lists 1.22.x, which works only via Go's automatic toolchain download — treat
-1.23 as the real floor.
+You need Go 1.23 or newer (`go.mod` sets `go 1.23.0`). CI tests against
+1.23.x on Linux, macOS and Windows.
 
 ```bash
 git clone https://github.com/kristofferrisa/powerctl-cli.git
