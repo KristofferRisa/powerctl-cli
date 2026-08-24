@@ -37,6 +37,18 @@ var consumptionCmd = &cobra.Command{
 		// Normalize resolution to uppercase for GraphQL
 		res := strings.ToUpper(resolution)
 
+		// Validate resolution
+		switch res {
+		case "HOURLY", "DAILY", "WEEKLY", "MONTHLY", "ANNUAL":
+			// valid
+		default:
+			exitWithError("Invalid resolution: %q. Must be one of: hourly, daily, weekly, monthly, annual", resolution)
+		}
+
+		if last <= 0 {
+			exitWithError("Invalid last value: %d. Must be greater than 0", last)
+		}
+
 		history, err := client.GetConsumptionHistory(ctx, targetHome, res, last)
 		if err != nil {
 			exitWithError("Failed to fetch consumption history: %v", err)
