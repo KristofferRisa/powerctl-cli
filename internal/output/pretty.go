@@ -265,10 +265,9 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 	fmt.Fprintf(&sb, "\n%s%s📊 Consumption History%s\n", Bold, Cyan, Reset)
 	fmt.Fprintf(&sb, "%s%s%s\n\n", Dim, strings.Repeat("─", 24), Reset)
 
-	headerFmt := "  %-12s %-30s %15s %15s\n"
 	rowFmt := "  %-12s %s%-15s%s %-14s %15s %15s\n"
 
-	fmt.Fprintf(&sb, "%s"+headerFmt+"%s", Bold, "Period", "Consumption", "Total Cost", "Avg Price", Reset)
+	fmt.Fprintf(&sb, "%s  📅 Period   ⚡ Consumption                   💰 Total Cost    📊 Avg Price%s\n", Bold, Reset)
 	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 80), Reset)
 
 	// Find max consumption for the bar graph scale
