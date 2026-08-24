@@ -371,7 +371,7 @@ func TestPrettyFormatter_FormatConsumptionHistory(t *testing.T) {
 	output := f.FormatConsumptionHistory(nodes, "DAILY")
 
 	// Check table columns exist
-	if !strings.Contains(output, "Period") || !strings.Contains(output, "Consumption (kWh)") || !strings.Contains(output, "Total Cost") || !strings.Contains(output, "Avg Price") {
+	if !strings.Contains(output, "Period") || !strings.Contains(output, "Consumption") || !strings.Contains(output, "Total Cost") || !strings.Contains(output, "Avg Price") {
 		t.Error("FormatConsumptionHistory() missing expected table columns")
 	}
 

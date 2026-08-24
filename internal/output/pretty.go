@@ -265,11 +265,19 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 	fmt.Fprintf(&sb, "\n%s%s📊 Consumption History%s\n", Bold, Cyan, Reset)
 	fmt.Fprintf(&sb, "%s%s%s\n\n", Dim, strings.Repeat("─", 24), Reset)
 
-	headerFmt := "  %-20s %20s %20s %20s\n"
-	rowFmt := "  %-20s %20s %20s %20s\n"
+	headerFmt := "  %-12s %-30s %15s %15s\n"
+	rowFmt := "  %-12s %s%-15s%s %-14s %15s %15s\n"
 
-	fmt.Fprintf(&sb, "%s"+headerFmt+"%s", Bold, "Period", "Consumption (kWh)", "Total Cost", "Avg Price", Reset)
-	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 83), Reset)
+	fmt.Fprintf(&sb, "%s"+headerFmt+"%s", Bold, "Period", "Consumption", "Total Cost", "Avg Price", Reset)
+	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 80), Reset)
+
+	// Find max consumption for the bar graph scale
+	var maxCons float64
+	for _, n := range nodes {
+		if n.Consumption != nil && *n.Consumption > maxCons {
+			maxCons = *n.Consumption
+		}
+	}
 
 	var totalConsumption float64
 	var totalCost float64
@@ -279,9 +287,25 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 		period := formatPeriod(n.From, n.To, resolution)
 
 		consStr := "-"
+		barStr := strings.Repeat(" ", 15) // Empty space if no data
+		
 		if n.Consumption != nil {
-			consStr = fmt.Sprintf("%.2f", *n.Consumption)
+			consStr = fmt.Sprintf("%.2f kWh", *n.Consumption)
 			totalConsumption += *n.Consumption
+			
+			// Build bar
+			barWidth := 15
+			barLen := 0
+			if maxCons > 0 {
+				barLen = int(float64(barWidth) * (*n.Consumption) / maxCons)
+			}
+			if barLen < 1 && *n.Consumption > 0 {
+				barLen = 1 // Show at least a blip if > 0
+			}
+			if barLen > barWidth {
+				barLen = barWidth
+			}
+			barStr = strings.Repeat("█", barLen) + strings.Repeat("░", barWidth-barLen)
 		}
 
 		costStr := "-"
@@ -298,12 +322,19 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 			priceStr = fmt.Sprintf("%.2f", *n.UnitPrice)
 		}
 
-		fmt.Fprintf(&sb, rowFmt, period, consStr, costStr, priceStr)
+		costWithCurrency := "-"
+		if costStr != "-" {
+			costWithCurrency = costStr + " " + currency
+		}
+
+		fmt.Fprintf(&sb, rowFmt, period, BrightCyan, barStr, Reset, consStr, costWithCurrency, priceStr)
 	}
 
-	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 83), Reset)
-	fmt.Fprintf(&sb, "%s"+rowFmt+"%s\n", Bold, "Totals",
-		fmt.Sprintf("%.2f", totalConsumption),
+	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 80), Reset)
+	
+	footerFmt := "  %-12s %-30s %15s %15s\n"
+	fmt.Fprintf(&sb, "%s"+footerFmt+"%s\n", Bold, "Totals",
+		fmt.Sprintf("%.2f kWh", totalConsumption),
 		fmt.Sprintf("%.2f %s", totalCost, currency),
 		"", Reset)
 
