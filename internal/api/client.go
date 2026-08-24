@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kristofferrisa/powerctl-cli/internal/models"
@@ -176,6 +177,9 @@ func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resol
 	}
 
 	if err != nil {
+		if strings.Contains(err.Error(), "does not exist") {
+			return nil, fmt.Errorf("home with ID %q not found", homeID)
+		}
 		return nil, err
 	}
 
@@ -199,6 +203,10 @@ func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resol
 
 	if homeID != "" && result.Viewer.Home != nil {
 		return result.Viewer.Home.Consumption.Nodes, nil
+	}
+
+	if homeID != "" {
+		return nil, fmt.Errorf("home with ID %q not found", homeID)
 	}
 
 	if len(result.Viewer.Homes) == 0 {
