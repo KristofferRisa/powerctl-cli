@@ -289,6 +289,10 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 	for _, n := range nodes {
 		period := formatPeriod(n.From, n.To, resolution)
 
+		if currency == "" && n.Currency != "" {
+			currency = n.Currency
+		}
+
 		consStr := "-"
 		consBarStr := strings.Repeat(" ", 12) // Empty space if no data
 		
@@ -316,9 +320,6 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 		if n.Cost != nil {
 			costStr = fmt.Sprintf("%.2f", *n.Cost)
 			totalCost += *n.Cost
-			if currency == "" && n.Currency != "" {
-				currency = n.Currency
-			}
 
 			// Build cost bar
 			barWidth := 12
@@ -338,6 +339,9 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 		priceStr := "-"
 		if n.UnitPrice != nil {
 			priceStr = fmt.Sprintf("%.2f", *n.UnitPrice)
+			if currency != "" {
+				priceStr += " " + currency
+			}
 		}
 
 		costWithCurrency := "-"
