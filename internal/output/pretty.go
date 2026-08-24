@@ -265,16 +265,20 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 	fmt.Fprintf(&sb, "\n%s%s📊 Consumption History%s\n", Bold, Cyan, Reset)
 	fmt.Fprintf(&sb, "%s%s%s\n\n", Dim, strings.Repeat("─", 24), Reset)
 
-	rowFmt := "  %-12s %s%-15s%s %-14s %15s %15s\n"
+	rowFmt := "  %-12s %s%-12s%s %-13s %s%-12s%s %-13s %9s\n"
 
-	fmt.Fprintf(&sb, "%s  📅 Period   ⚡ Consumption                   💰 Total Cost    📊 Avg Price%s\n", Bold, Reset)
-	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 80), Reset)
+	fmt.Fprintf(&sb, "%s  📅 Period    ⚡ Consumption             💰 Total Cost             📊 Avg Price%s\n", Bold, Reset)
+	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 78), Reset)
 
-	// Find max consumption for the bar graph scale
+	// Find max consumption and cost for the bar graph scale
 	var maxCons float64
+	var maxCost float64
 	for _, n := range nodes {
 		if n.Consumption != nil && *n.Consumption > maxCons {
 			maxCons = *n.Consumption
+		}
+		if n.Cost != nil && *n.Cost > maxCost {
+			maxCost = *n.Cost
 		}
 	}
 
@@ -286,14 +290,14 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 		period := formatPeriod(n.From, n.To, resolution)
 
 		consStr := "-"
-		barStr := strings.Repeat(" ", 15) // Empty space if no data
+		consBarStr := strings.Repeat(" ", 12) // Empty space if no data
 		
 		if n.Consumption != nil {
 			consStr = fmt.Sprintf("%.2f kWh", *n.Consumption)
 			totalConsumption += *n.Consumption
 			
-			// Build bar
-			barWidth := 15
+			// Build consumption bar
+			barWidth := 12
 			barLen := 0
 			if maxCons > 0 {
 				barLen = int(float64(barWidth) * (*n.Consumption) / maxCons)
@@ -304,16 +308,31 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 			if barLen > barWidth {
 				barLen = barWidth
 			}
-			barStr = strings.Repeat("█", barLen) + strings.Repeat("░", barWidth-barLen)
+			consBarStr = strings.Repeat("█", barLen) + strings.Repeat("░", barWidth-barLen)
 		}
 
 		costStr := "-"
+		costBarStr := strings.Repeat(" ", 12) // Empty space if no data
 		if n.Cost != nil {
 			costStr = fmt.Sprintf("%.2f", *n.Cost)
 			totalCost += *n.Cost
 			if currency == "" && n.Currency != "" {
 				currency = n.Currency
 			}
+
+			// Build cost bar
+			barWidth := 12
+			barLen := 0
+			if maxCost > 0 {
+				barLen = int(float64(barWidth) * (*n.Cost) / maxCost)
+			}
+			if barLen < 1 && *n.Cost > 0 {
+				barLen = 1 // Show at least a blip if > 0
+			}
+			if barLen > barWidth {
+				barLen = barWidth
+			}
+			costBarStr = strings.Repeat("█", barLen) + strings.Repeat("░", barWidth-barLen)
 		}
 
 		priceStr := "-"
@@ -326,12 +345,12 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 			costWithCurrency = costStr + " " + currency
 		}
 
-		fmt.Fprintf(&sb, rowFmt, period, BrightCyan, barStr, Reset, consStr, costWithCurrency, priceStr)
+		fmt.Fprintf(&sb, rowFmt, period, BrightCyan, consBarStr, Reset, consStr, BrightYellow, costBarStr, Reset, costWithCurrency, priceStr)
 	}
 
-	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 80), Reset)
+	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 78), Reset)
 	
-	footerFmt := "  %-12s %-30s %15s %15s\n"
+	footerFmt := "  %-12s %-26s %-26s %9s\n"
 	fmt.Fprintf(&sb, "%s"+footerFmt+"%s\n", Bold, "Totals",
 		fmt.Sprintf("%.2f kWh", totalConsumption),
 		fmt.Sprintf("%.2f %s", totalCost, currency),
