@@ -115,6 +115,21 @@ powerctl prices
      16:00 ████████████████████ 0.78 NOK
 ```
 
+#### View Consumption History
+```bash
+powerctl consumption --resolution daily --last 7
+```
+```
+[96mConsumption History[0m
+
+Period                  Consumption (kWh)           Total Cost            Avg Price
+-----------------------------------------------------------------------------------
+2023-10-01                          24.50            120.40                 4.90
+2023-10-02                          15.00             60.00                 4.00
+-----------------------------------------------------------------------------------
+Totals                              39.50            180.40 NOK                 
+```
+
 #### Stream Live Power Consumption
 ```bash
 powerctl live

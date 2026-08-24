@@ -37,3 +37,9 @@ This is a Go CLI for Tibber power consumption data using Cobra for commands.
 - All formatters implement the `Formatter` interface in `output/formatter.go`
 - WebSocket requires `User-Agent: powerctl-cli/1.0` header (Tibber rejects default Go client)
 - Exit code 1 for errors, graceful shutdown on SIGINT/SIGTERM for live streaming
+
+## Agent skills
+
+### Domain docs
+
+Single-context repo layout. See `docs/agents/domain.md`.

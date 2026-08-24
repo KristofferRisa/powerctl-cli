@@ -79,7 +79,7 @@ func (c *Client) execute(ctx context.Context, query string, variables map[string
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -156,4 +156,55 @@ func (c *Client) GetPrices(ctx context.Context, homeID string) (*models.PriceInf
 	}
 
 	return nil, fmt.Errorf("no price information found")
+}
+
+// GetConsumptionHistory fetches historical consumption data
+func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resolution string, last int) ([]models.ConsumptionNode, error) {
+	variables := map[string]interface{}{
+		"resolution": resolution,
+		"last":       last,
+	}
+
+	var data json.RawMessage
+	var err error
+
+	if homeID != "" {
+		variables["homeId"] = homeID
+		data, err = c.execute(ctx, QueryConsumptionHome, variables)
+	} else {
+		data, err = c.execute(ctx, QueryConsumptionHomes, variables)
+	}
+
+	if err != nil {
+		return nil, err
+	}
+
+	type graphQLResponse struct {
+		Viewer struct {
+			Home *struct {
+				ID          string                    `json:"id"`
+				Consumption models.ConsumptionHistory `json:"consumption"`
+			} `json:"home"`
+			Homes []struct {
+				ID          string                    `json:"id"`
+				Consumption models.ConsumptionHistory `json:"consumption"`
+			} `json:"homes"`
+		} `json:"viewer"`
+	}
+
+	var result graphQLResponse
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse consumption history: %w", err)
+	}
+
+	if homeID != "" && result.Viewer.Home != nil {
+		return result.Viewer.Home.Consumption.Nodes, nil
+	}
+
+	if len(result.Viewer.Homes) == 0 {
+		return nil, fmt.Errorf("no homes found")
+	}
+
+	// Return first home's consumption
+	return result.Viewer.Homes[0].Consumption.Nodes, nil
 }

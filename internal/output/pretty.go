@@ -44,44 +44,44 @@ func (f *PrettyFormatter) FormatHome(home *models.HomeResponse) string {
 		title = "Home"
 	}
 
-	sb.WriteString(fmt.Sprintf("\n%s%s %s%s\n", Bold, Cyan, title, Reset))
-	sb.WriteString(fmt.Sprintf("%s%s%s\n\n", Dim, strings.Repeat("─", len(title)+2), Reset))
+	fmt.Fprintf(&sb, "\n%s%s %s%s\n", Bold, Cyan, title, Reset)
+	fmt.Fprintf(&sb, "%s%s%s\n\n", Dim, strings.Repeat("─", len(title)+2), Reset)
 
 	// Address
 	if home.Address.Address1 != "" {
-		sb.WriteString(fmt.Sprintf("  %s📍 Address%s\n", Bold, Reset))
-		sb.WriteString(fmt.Sprintf("     %s\n", home.Address.Address1))
+		fmt.Fprintf(&sb, "  %s📍 Address%s\n", Bold, Reset)
+		fmt.Fprintf(&sb, "     %s\n", home.Address.Address1)
 		if home.Address.PostalCode != "" || home.Address.City != "" {
-			sb.WriteString(fmt.Sprintf("     %s %s, %s\n", home.Address.PostalCode, home.Address.City, home.Address.Country))
+			fmt.Fprintf(&sb, "     %s %s, %s\n", home.Address.PostalCode, home.Address.City, home.Address.Country)
 		}
 		sb.WriteString("\n")
 	}
 
 	// Details
-	sb.WriteString(fmt.Sprintf("  %s🏠 Details%s\n", Bold, Reset))
+	fmt.Fprintf(&sb, "  %s🏠 Details%s\n", Bold, Reset)
 	if home.Size > 0 {
-		sb.WriteString(fmt.Sprintf("     Size:      %s%d m²%s\n", BrightCyan, home.Size, Reset))
+		fmt.Fprintf(&sb, "     Size:      %s%d m²%s\n", BrightCyan, home.Size, Reset)
 	}
 	if home.Type != "" {
-		sb.WriteString(fmt.Sprintf("     Type:      %s\n", home.Type))
+		fmt.Fprintf(&sb, "     Type:      %s\n", home.Type)
 	}
 	if home.NumberOfResidents > 0 {
-		sb.WriteString(fmt.Sprintf("     Residents: %d\n", home.NumberOfResidents))
+		fmt.Fprintf(&sb, "     Residents: %d\n", home.NumberOfResidents)
 	}
 	if home.MainFuseSize > 0 {
-		sb.WriteString(fmt.Sprintf("     Main Fuse: %d A\n", home.MainFuseSize))
+		fmt.Fprintf(&sb, "     Main Fuse: %d A\n", home.MainFuseSize)
 	}
 	sb.WriteString("\n")
 
 	// Pulse status
-	sb.WriteString(fmt.Sprintf("  %s⚡ Pulse%s\n", Bold, Reset))
+	fmt.Fprintf(&sb, "  %s⚡ Pulse%s\n", Bold, Reset)
 	if home.Features.RealTimeConsumptionEnabled {
-		sb.WriteString(fmt.Sprintf("     Status: %s● Connected%s\n", BrightGreen, Reset))
+		fmt.Fprintf(&sb, "     Status: %s● Connected%s\n", BrightGreen, Reset)
 	} else {
-		sb.WriteString(fmt.Sprintf("     Status: %s○ Not connected%s\n", Dim, Reset))
+		fmt.Fprintf(&sb, "     Status: %s○ Not connected%s\n", Dim, Reset)
 	}
 
-	sb.WriteString(fmt.Sprintf("\n  %sID: %s%s\n", Dim, home.ID, Reset))
+	fmt.Fprintf(&sb, "\n  %sID: %s%s\n", Dim, home.ID, Reset)
 
 	return sb.String()
 }
@@ -90,8 +90,8 @@ func (f *PrettyFormatter) FormatHome(home *models.HomeResponse) string {
 func (f *PrettyFormatter) FormatHomes(homes []models.HomeResponse) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("\n%s%s⚡ Tibber Homes%s\n", Bold, Cyan, Reset))
-	sb.WriteString(fmt.Sprintf("%s%s%s\n", Dim, strings.Repeat("─", 16), Reset))
+	fmt.Fprintf(&sb, "\n%s%s⚡ Tibber Homes%s\n", Bold, Cyan, Reset)
+	fmt.Fprintf(&sb, "%s%s%s\n", Dim, strings.Repeat("─", 16), Reset)
 
 	for _, home := range homes {
 		sb.WriteString(f.FormatHome(&home))
@@ -105,30 +105,30 @@ func (f *PrettyFormatter) FormatHomes(homes []models.HomeResponse) string {
 func (f *PrettyFormatter) FormatPrices(prices *models.PriceInfo, homeID string) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("\n%s%s⚡ Electricity Prices%s\n", Bold, Cyan, Reset))
-	sb.WriteString(fmt.Sprintf("%s%s%s\n\n", Dim, strings.Repeat("─", 22), Reset))
+	fmt.Fprintf(&sb, "\n%s%s⚡ Electricity Prices%s\n", Bold, Cyan, Reset)
+	fmt.Fprintf(&sb, "%s%s%s\n\n", Dim, strings.Repeat("─", 22), Reset)
 
 	// Current price - big and prominent
 	if prices.Current != nil {
-		sb.WriteString(fmt.Sprintf("  %s%sNOW%s  ", Bold, BrightYellow, Reset))
-		sb.WriteString(fmt.Sprintf("%s%s%.2f %s/kWh%s", Bold, priceColor(prices.Current.Level), prices.Current.Total, prices.Current.Currency, Reset))
-		sb.WriteString(fmt.Sprintf("  %s\n\n", levelLabel(prices.Current.Level)))
+		fmt.Fprintf(&sb, "  %s%sNOW%s  ", Bold, BrightYellow, Reset)
+		fmt.Fprintf(&sb, "%s%s%.2f %s/kWh%s", Bold, priceColor(prices.Current.Level), prices.Current.Total, prices.Current.Currency, Reset)
+		fmt.Fprintf(&sb, "  %s\n\n", levelLabel(prices.Current.Level))
 	}
 
 	// Today's prices
 	if len(prices.Today) > 0 {
-		sb.WriteString(fmt.Sprintf("  %s📅 Today%s\n", Bold, Reset))
+		fmt.Fprintf(&sb, "  %s📅 Today%s\n", Bold, Reset)
 		sb.WriteString(f.formatPriceList(prices.Today))
 		sb.WriteString("\n")
 	}
 
 	// Tomorrow's prices
 	if len(prices.Tomorrow) > 0 {
-		sb.WriteString(fmt.Sprintf("  %s📅 Tomorrow%s\n", Bold, Reset))
+		fmt.Fprintf(&sb, "  %s📅 Tomorrow%s\n", Bold, Reset)
 		sb.WriteString(f.formatPriceList(prices.Tomorrow))
 	} else {
-		sb.WriteString(fmt.Sprintf("  %s📅 Tomorrow%s\n", Bold, Reset))
-		sb.WriteString(fmt.Sprintf("     %sNot yet available (published ~13:00)%s\n", Dim, Reset))
+		fmt.Fprintf(&sb, "  %s📅 Tomorrow%s\n", Bold, Reset)
+		fmt.Fprintf(&sb, "     %sNot yet available (published ~13:00)%s\n", Dim, Reset)
 	}
 
 	return sb.String()
@@ -174,7 +174,7 @@ func (f *PrettyFormatter) formatPriceList(prices []models.Price) string {
 				priceColor(p.Level), bar, p.Total, Reset,
 				Dim, p.Currency, Reset))
 		} else {
-			sb.WriteString(fmt.Sprintf("   %s%s %.2f %s\n", prefix, hour, p.Total, p.Currency))
+			fmt.Fprintf(&sb, "   %s%s %.2f %s\n", prefix, hour, p.Total, p.Currency)
 		}
 	}
 
@@ -185,8 +185,8 @@ func (f *PrettyFormatter) formatPriceList(prices []models.Price) string {
 func (f *PrettyFormatter) FormatLiveMeasurement(m *models.LiveMeasurement) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("\n%s%s⚡ Live Power%s\n", Bold, Cyan, Reset))
-	sb.WriteString(fmt.Sprintf("%s%s%s\n\n", Dim, strings.Repeat("─", 14), Reset))
+	fmt.Fprintf(&sb, "\n%s%s⚡ Live Power%s\n", Bold, Cyan, Reset)
+	fmt.Fprintf(&sb, "%s%s%s\n\n", Dim, strings.Repeat("─", 14), Reset)
 
 	// Power - big and prominent
 	powerColor := BrightGreen
@@ -196,21 +196,21 @@ func (f *PrettyFormatter) FormatLiveMeasurement(m *models.LiveMeasurement) strin
 		powerColor = BrightYellow
 	}
 
-	sb.WriteString(fmt.Sprintf("  %s%s%.0f W%s\n\n", Bold, powerColor, m.Power, Reset))
+	fmt.Fprintf(&sb, "  %s%s%.0f W%s\n\n", Bold, powerColor, m.Power, Reset)
 
 	// Production if any
 	if m.PowerProduction > 0 {
-		sb.WriteString(fmt.Sprintf("  %s☀️  Production:%s %.0f W\n", Green, Reset, m.PowerProduction))
+		fmt.Fprintf(&sb, "  %s☀️  Production:%s %.0f W\n", Green, Reset, m.PowerProduction)
 	}
 
 	// Today's stats
-	sb.WriteString(fmt.Sprintf("  %s📊 Today%s\n", Bold, Reset))
-	sb.WriteString(fmt.Sprintf("     Consumed: %s%.2f kWh%s\n", BrightCyan, m.AccumulatedConsumption, Reset))
-	sb.WriteString(fmt.Sprintf("     Cost:     %s%.2f %s%s\n", BrightYellow, m.AccumulatedCost, m.Currency, Reset))
+	fmt.Fprintf(&sb, "  %s📊 Today%s\n", Bold, Reset)
+	fmt.Fprintf(&sb, "     Consumed: %s%.2f kWh%s\n", BrightCyan, m.AccumulatedConsumption, Reset)
+	fmt.Fprintf(&sb, "     Cost:     %s%.2f %s%s\n", BrightYellow, m.AccumulatedCost, m.Currency, Reset)
 
 	// Voltage and current if available
 	if m.VoltagePhase1 > 0 {
-		sb.WriteString(fmt.Sprintf("\n  %s🔌 Grid%s\n", Bold, Reset))
+		fmt.Fprintf(&sb, "\n  %s🔌 Grid%s\n", Bold, Reset)
 		sb.WriteString(fmt.Sprintf("     Voltage: %.0f / %.0f / %.0f V\n",
 			m.VoltagePhase1, m.VoltagePhase2, m.VoltagePhase3))
 		sb.WriteString(fmt.Sprintf("     Current: %.1f / %.1f / %.1f A\n",
@@ -218,7 +218,7 @@ func (f *PrettyFormatter) FormatLiveMeasurement(m *models.LiveMeasurement) strin
 	}
 
 	// Timestamp
-	sb.WriteString(fmt.Sprintf("\n  %s%s%s\n", Dim, m.Timestamp.Local().Format("15:04:05"), Reset))
+	fmt.Fprintf(&sb, "\n  %s%s%s\n", Dim, m.Timestamp.Local().Format("15:04:05"), Reset)
 
 	return sb.String()
 }
@@ -257,4 +257,56 @@ func levelLabel(level string) string {
 	default:
 		return level
 	}
+}
+
+func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNode, resolution string) string {
+	var sb strings.Builder
+
+	fmt.Fprintf(&sb, "%sConsumption History%s\n\n", BrightCyan, Reset)
+
+	// Print headers manually for now, or use tabwriter. Since the codebase uses spaces or naive padding:
+	// Format strings for simple columns
+	headerFmt := "%-20s %20s %20s %20s\n"
+	rowFmt := "%-20s %20s %20s %20s\n"
+
+	fmt.Fprintf(&sb, headerFmt, "Period", "Consumption (kWh)", "Total Cost", "Avg Price")
+	sb.WriteString(strings.Repeat("-", 83) + "\n")
+
+	var totalConsumption float64
+	var totalCost float64
+	currency := ""
+
+	for _, n := range nodes {
+		period := formatPeriod(n.From, n.To, resolution)
+
+		consStr := "-"
+		if n.Consumption != nil {
+			consStr = fmt.Sprintf("%.2f", *n.Consumption)
+			totalConsumption += *n.Consumption
+		}
+
+		costStr := "-"
+		if n.Cost != nil {
+			costStr = fmt.Sprintf("%.2f", *n.Cost)
+			totalCost += *n.Cost
+			if currency == "" && n.Currency != "" {
+				currency = n.Currency
+			}
+		}
+
+		priceStr := "-"
+		if n.UnitPrice != nil {
+			priceStr = fmt.Sprintf("%.2f", *n.UnitPrice)
+		}
+
+		fmt.Fprintf(&sb, rowFmt, period, consStr, costStr, priceStr)
+	}
+
+	sb.WriteString(strings.Repeat("-", 83) + "\n")
+	sb.WriteString(fmt.Sprintf(rowFmt, "Totals",
+		fmt.Sprintf("%.2f", totalConsumption),
+		fmt.Sprintf("%.2f %s", totalCost, currency),
+		""))
+
+	return sb.String()
 }

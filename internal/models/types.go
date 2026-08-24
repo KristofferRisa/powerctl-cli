@@ -86,3 +86,20 @@ type HomeResponse struct {
 type Subscription struct {
 	PriceInfo *PriceInfo `json:"priceInfo"`
 }
+
+// ConsumptionNode represents a single data point in consumption history
+type ConsumptionNode struct {
+	From         time.Time `json:"from"`
+	To           time.Time `json:"to"`
+	Consumption  *float64  `json:"consumption"`
+	Cost         *float64  `json:"cost"`
+	UnitPrice    *float64  `json:"unitPrice"`
+	UnitPriceVAT *float64  `json:"unitPriceVAT"`
+	Currency     string    `json:"currency"`
+}
+
+// ConsumptionHistory represents a history of consumption nodes
+type ConsumptionHistory struct {
+	Nodes []ConsumptionNode `json:"nodes"`
+}
+

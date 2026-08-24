@@ -32,3 +32,11 @@ func (f *JSONFormatter) FormatLiveMeasurement(m *models.LiveMeasurement) string 
 	data, _ := json.Marshal(m)
 	return string(data)
 }
+
+func (f *JSONFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNode, resolution string) string {
+	b, err := json.MarshalIndent(nodes, "", "  ")
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}

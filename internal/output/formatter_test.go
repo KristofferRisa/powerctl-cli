@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+	"fmt"
 	"time"
 
 	"github.com/kristofferrisa/powerctl-cli/internal/models"
@@ -307,4 +308,138 @@ func TestPrettyFormatter_PowerColorByUsage(t *testing.T) {
 			}
 		})
 	}
+}
+
+func floatPtr(f float64) *float64 { return &f }
+
+func sampleConsumptionNodes() []models.ConsumptionNode {
+	t1, _ := time.Parse(time.RFC3339, "2023-10-01T00:00:00Z")
+	t2, _ := time.Parse(time.RFC3339, "2023-10-02T00:00:00Z")
+	t3, _ := time.Parse(time.RFC3339, "2023-10-03T00:00:00Z")
+
+	return []models.ConsumptionNode{
+		{
+			From:         t1,
+			To:           t2,
+			Consumption:  floatPtr(24.5),
+			Cost:         floatPtr(120.4),
+			UnitPrice:    floatPtr(4.9),
+			UnitPriceVAT: floatPtr(1.22),
+			Currency:     "NOK",
+		},
+		{
+			From:         t2,
+			To:           t3,
+			Consumption:  floatPtr(15.0),
+			Cost:         floatPtr(60.0),
+			UnitPrice:    floatPtr(4.0),
+			UnitPriceVAT: floatPtr(1.00),
+			Currency:     "NOK",
+		},
+	}
+}
+
+func TestJSONFormatter_FormatConsumptionHistory(t *testing.T) {
+	f := &JSONFormatter{}
+	nodes := sampleConsumptionNodes()
+
+	output := f.FormatConsumptionHistory(nodes, "DAILY")
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatConsumptionHistory() output is not valid JSON array: %v\nOutput: %s", err, output)
+	}
+
+	if len(result) != 2 {
+		t.Errorf("FormatConsumptionHistory() len = %d, want 2", len(result))
+	}
+
+	if result[0]["cost"].(float64) != 120.4 {
+		t.Errorf("FormatConsumptionHistory() cost = %v, want 120.4", result[0]["cost"])
+	}
+
+	// Must be multiline (indented)
+	if !strings.Contains(output, "\n") {
+		t.Error("FormatConsumptionHistory() output should be indented")
+	}
+}
+
+func TestPrettyFormatter_FormatConsumptionHistory(t *testing.T) {
+	f := &PrettyFormatter{}
+	nodes := sampleConsumptionNodes()
+
+	output := f.FormatConsumptionHistory(nodes, "DAILY")
+
+	// Check table columns exist
+	if !strings.Contains(output, "Period") || !strings.Contains(output, "Consumption (kWh)") || !strings.Contains(output, "Total Cost") || !strings.Contains(output, "Avg Price") {
+		t.Error("FormatConsumptionHistory() missing expected table columns")
+	}
+
+	// Check data is present
+	if !strings.Contains(output, "24.5") || !strings.Contains(output, "120.4") {
+		t.Error("FormatConsumptionHistory() missing expected values")
+	}
+
+	// Check for Totals row
+	if !strings.Contains(output, "Totals") {
+		t.Error("FormatConsumptionHistory() missing Totals row")
+	}
+	if !strings.Contains(output, "39.5") { // 24.5 + 15.0
+		t.Error("FormatConsumptionHistory() missing correct total consumption")
+	}
+	if !strings.Contains(output, "180.4") { // 120.4 + 60.0
+		t.Error("FormatConsumptionHistory() missing correct total cost")
+	}
+}
+
+func TestMarkdownFormatter_FormatConsumptionHistory(t *testing.T) {
+	f := &MarkdownFormatter{}
+	nodes := sampleConsumptionNodes()
+
+	output := f.FormatConsumptionHistory(nodes, "DAILY")
+
+	if !strings.Contains(output, "| Period") {
+		t.Error("FormatConsumptionHistory() missing markdown table header")
+	}
+
+	if !strings.Contains(output, "120.4") {
+		t.Error("FormatConsumptionHistory() missing values")
+	}
+
+	// Check for Totals row in markdown too
+	if !strings.Contains(output, "Totals") || !strings.Contains(output, "39.5") {
+		t.Error("FormatConsumptionHistory() missing Totals row in markdown")
+	}
+}
+
+func TestFormatPeriod_DynamicResolution(t *testing.T) {
+	t1, _ := time.Parse(time.RFC3339, "2023-10-01T15:00:00Z")
+	t2, _ := time.Parse(time.RFC3339, "2023-10-01T16:00:00Z")
+
+	tests := []struct {
+		resolution string
+		want       string // Partial string to check since Local() changes based on timezone
+	}{
+		{"DAILY", t1.Local().Format("2006-01-02")},
+		{"MONTHLY", t1.Local().Format("2006-01")},
+		{"ANNUAL", t1.Local().Format("2006")},
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.resolution), func(t *testing.T) {
+			got := formatPeriod(t1, t2, tt.resolution)
+			if !strings.Contains(got, tt.want) {
+				t.Errorf("formatPeriod() = %v, want to contain %v", got, tt.want)
+			}
+		})
+	}
+	
+	t.Run("WEEKLY", func(t *testing.T) {
+		got := formatPeriod(t1, t2, "WEEKLY")
+		year, week := t1.Local().ISOWeek()
+		want := fmt.Sprintf("%d-W%02d", year, week)
+		if got != want {
+			t.Errorf("formatPeriod() = %v, want %v", got, want)
+		}
+	})
 }
