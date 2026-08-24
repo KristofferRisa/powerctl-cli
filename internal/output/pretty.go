@@ -138,7 +138,7 @@ func (f *PrettyFormatter) formatPriceList(prices []models.Price) string {
 	var sb strings.Builder
 
 	// Find min/max for highlighting
-	var minPrice, maxPrice float64 = prices[0].Total, prices[0].Total
+	var minPrice, maxPrice = prices[0].Total, prices[0].Total
 	for _, p := range prices {
 		if p.Total < minPrice {
 			minPrice = p.Total
@@ -169,10 +169,10 @@ func (f *PrettyFormatter) formatPriceList(prices []models.Price) string {
 				barLen = 1
 			}
 			bar := strings.Repeat("█", barLen) + strings.Repeat("░", barWidth-barLen)
-			sb.WriteString(fmt.Sprintf("   %s%s %s%s%.2f%s %s%s%s\n",
+			fmt.Fprintf(&sb, "   %s%s %s%s%.2f%s %s%s%s\n",
 				prefix, hour,
 				priceColor(p.Level), bar, p.Total, Reset,
-				Dim, p.Currency, Reset))
+				Dim, p.Currency, Reset)
 		} else {
 			fmt.Fprintf(&sb, "   %s%s %.2f %s\n", prefix, hour, p.Total, p.Currency)
 		}
@@ -211,10 +211,10 @@ func (f *PrettyFormatter) FormatLiveMeasurement(m *models.LiveMeasurement) strin
 	// Voltage and current if available
 	if m.VoltagePhase1 > 0 {
 		fmt.Fprintf(&sb, "\n  %s🔌 Grid%s\n", Bold, Reset)
-		sb.WriteString(fmt.Sprintf("     Voltage: %.0f / %.0f / %.0f V\n",
-			m.VoltagePhase1, m.VoltagePhase2, m.VoltagePhase3))
-		sb.WriteString(fmt.Sprintf("     Current: %.1f / %.1f / %.1f A\n",
-			m.CurrentL1, m.CurrentL2, m.CurrentL3))
+		fmt.Fprintf(&sb, "     Voltage: %.0f / %.0f / %.0f V\n",
+			m.VoltagePhase1, m.VoltagePhase2, m.VoltagePhase3)
+		fmt.Fprintf(&sb, "     Current: %.1f / %.1f / %.1f A\n",
+			m.CurrentL1, m.CurrentL2, m.CurrentL3)
 	}
 
 	// Timestamp

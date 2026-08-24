@@ -71,10 +71,10 @@ func (f *MarkdownFormatter) FormatPrices(prices *models.PriceInfo, homeID string
 	// Current price
 	if prices.Current != nil {
 		sb.WriteString("## Current Price\n\n")
-		sb.WriteString(fmt.Sprintf("**%.2f %s/kWh** (%s)\n\n",
+		fmt.Fprintf(&sb, "**%.2f %s/kWh** (%s)\n\n",
 			prices.Current.Total,
 			prices.Current.Currency,
-			levelEmoji(prices.Current.Level)))
+			levelEmoji(prices.Current.Level))
 	}
 
 	// Today's prices
@@ -110,12 +110,12 @@ func (f *MarkdownFormatter) FormatLiveMeasurement(m *models.LiveMeasurement) str
 	fmt.Fprintf(&sb, "| Cost | %.2f %s |\n", m.AccumulatedCost, m.Currency)
 
 	if m.VoltagePhase1 > 0 {
-		sb.WriteString(fmt.Sprintf("| Voltage | %.1f / %.1f / %.1f V |\n",
-			m.VoltagePhase1, m.VoltagePhase2, m.VoltagePhase3))
+		fmt.Fprintf(&sb, "| Voltage | %.1f / %.1f / %.1f V |\n",
+			m.VoltagePhase1, m.VoltagePhase2, m.VoltagePhase3)
 	}
 	if m.CurrentL1 > 0 {
-		sb.WriteString(fmt.Sprintf("| Current | %.1f / %.1f / %.1f A |\n",
-			m.CurrentL1, m.CurrentL2, m.CurrentL3))
+		fmt.Fprintf(&sb, "| Current | %.1f / %.1f / %.1f A |\n",
+			m.CurrentL1, m.CurrentL2, m.CurrentL3)
 	}
 
 	fmt.Fprintf(&sb, "| Updated | %s |\n", m.Timestamp.Format(time.RFC3339))
@@ -154,8 +154,8 @@ func formatPriceTable(prices []models.Price) string {
 
 	for _, p := range prices {
 		hour := p.StartsAt.Local().Format("15:04")
-		sb.WriteString(fmt.Sprintf("| %s | %.2f %s | %s |\n",
-			hour, p.Total, p.Currency, levelEmoji(p.Level)))
+		fmt.Fprintf(&sb, "| %s | %.2f %s | %s |\n",
+			hour, p.Total, p.Currency, levelEmoji(p.Level))
 	}
 
 	return sb.String()

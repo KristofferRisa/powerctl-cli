@@ -8,8 +8,7 @@ import (
 
 func TestLoad_EnvVarTakesPriority(t *testing.T) {
 	// Set up env var
-	os.Setenv("TIBBER_TOKEN", "env-token-123")
-	defer os.Unsetenv("TIBBER_TOKEN")
+	t.Setenv("TIBBER_TOKEN", "env-token-123")
 
 	cfg, err := Load("")
 	if err != nil {
@@ -46,8 +45,8 @@ format: "json"
 	}
 
 	// Ensure no env var interference
-	os.Unsetenv("TIBBER_TOKEN")
-	os.Unsetenv("TIBBER_HOME_ID")
+	t.Setenv("TIBBER_TOKEN", "")
+	t.Setenv("TIBBER_HOME_ID", "")
 
 	cfg, err := Load(configPath)
 	if err != nil {
@@ -78,8 +77,7 @@ home_id: "file-home"
 	}
 
 	// Set env var - should override file
-	os.Setenv("TIBBER_TOKEN", "env-token")
-	defer os.Unsetenv("TIBBER_TOKEN")
+	t.Setenv("TIBBER_TOKEN", "env-token")
 
 	cfg, err := Load(configPath)
 	if err != nil {

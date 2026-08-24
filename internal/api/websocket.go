@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"nhooyr.io/websocket"
+	"github.com/coder/websocket"
 
 	"github.com/kristofferrisa/powerctl-cli/internal/models"
 )
@@ -56,7 +56,7 @@ func (c *LiveClient) Subscribe(ctx context.Context, handler func(*models.LiveMea
 	if err != nil {
 		return fmt.Errorf("failed to connect: %w", err)
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "")
+	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "") }() // (websocket.StatusNormalClosure, "")
 
 	// Send connection_init
 	initPayload, _ := json.Marshal(map[string]string{

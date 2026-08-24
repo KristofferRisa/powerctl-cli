@@ -3,10 +3,10 @@ module github.com/kristofferrisa/powerctl-cli
 go 1.23.0
 
 require (
+	github.com/coder/websocket v1.8.15
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
 	gopkg.in/yaml.v3 v3.0.1
-	nhooyr.io/websocket v1.8.17
 )
 
 require (
