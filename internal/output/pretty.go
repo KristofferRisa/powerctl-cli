@@ -262,15 +262,14 @@ func levelLabel(level string) string {
 func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNode, resolution string) string {
 	var sb strings.Builder
 
-	fmt.Fprintf(&sb, "%sConsumption History%s\n\n", BrightCyan, Reset)
+	fmt.Fprintf(&sb, "\n%s%s📊 Consumption History%s\n", Bold, Cyan, Reset)
+	fmt.Fprintf(&sb, "%s%s%s\n\n", Dim, strings.Repeat("─", 24), Reset)
 
-	// Print headers manually for now, or use tabwriter. Since the codebase uses spaces or naive padding:
-	// Format strings for simple columns
-	headerFmt := "%-20s %20s %20s %20s\n"
-	rowFmt := "%-20s %20s %20s %20s\n"
+	headerFmt := "  %-20s %20s %20s %20s\n"
+	rowFmt := "  %-20s %20s %20s %20s\n"
 
-	fmt.Fprintf(&sb, headerFmt, "Period", "Consumption (kWh)", "Total Cost", "Avg Price")
-	sb.WriteString(strings.Repeat("-", 83) + "\n")
+	fmt.Fprintf(&sb, "%s"+headerFmt+"%s", Bold, "Period", "Consumption (kWh)", "Total Cost", "Avg Price", Reset)
+	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 83), Reset)
 
 	var totalConsumption float64
 	var totalCost float64
@@ -302,11 +301,11 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 		fmt.Fprintf(&sb, rowFmt, period, consStr, costStr, priceStr)
 	}
 
-	sb.WriteString(strings.Repeat("-", 83) + "\n")
-	sb.WriteString(fmt.Sprintf(rowFmt, "Totals",
+	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 83), Reset)
+	fmt.Fprintf(&sb, "%s"+rowFmt+"%s\n", Bold, "Totals",
 		fmt.Sprintf("%.2f", totalConsumption),
 		fmt.Sprintf("%.2f %s", totalCost, currency),
-		""))
+		"", Reset)
 
 	return sb.String()
 }
