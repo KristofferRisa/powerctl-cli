@@ -24,19 +24,16 @@ jobs:
           go-version: "1.23.x"
           cache: true
 
+      # These call the same Makefile targets contributors run locally via
+      # `make check`, so the gate cannot drift from what CI enforces.
       - name: Check formatting
-        run: |
-          if [ "$(gofmt -s -l . | wc -l)" -gt 0 ]; then
-            echo "The following files are not formatted:"
-            gofmt -s -l .
-            exit 1
-          fi
+        run: make check-fmt
 
       - name: Run go vet
-        run: go vet ./...
+        run: make vet
 
       - name: Run go mod verify
-        run: go mod verify
+        run: make mod-verify
 
   test:
     name: Test

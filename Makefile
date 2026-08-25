@@ -1,4 +1,5 @@
-.PHONY: build build-all clean test install
+.PHONY: build build-all build-linux build-darwin build-windows clean test install \
+        check check-fmt vet mod-verify test-race fmt lint tidy
 
 # Binary name
 BINARY=powerctl
@@ -48,9 +49,9 @@ clean:
 	rm -f $(BINARY)
 	rm -rf $(DIST)
 
-# Format code
+# Format code (gofmt -s, matching what CI enforces)
 fmt:
-	go fmt ./...
+	gofmt -s -w .
 
 # Lint code
 lint:
@@ -59,3 +60,26 @@ lint:
 # Tidy dependencies
 tidy:
 	go mod tidy
+
+# Run every gate CI enforces. Run this before opening a PR.
+check: check-fmt vet mod-verify test-race
+	@echo "All checks passed."
+
+# Mirrors the "Check formatting" step in .github/workflows/test.yml
+check-fmt:
+	@if [ -n "$$(gofmt -s -l .)" ]; then \
+		echo "The following files are not formatted:"; \
+		gofmt -s -l .; \
+		echo "Run 'make fmt' to fix."; \
+		exit 1; \
+	fi
+
+vet:
+	go vet ./...
+
+mod-verify:
+	go mod verify
+
+# CI additionally collects coverage and runs across the OS matrix
+test-race:
+	go test -race ./...
