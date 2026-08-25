@@ -159,10 +159,21 @@ func (c *LiveClient) parsePayload(payload json.RawMessage) (*models.LiveMeasurem
 		Data struct {
 			LiveMeasurement *models.LiveMeasurement `json:"liveMeasurement"`
 		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
 	}
 
 	if err := json.Unmarshal(payload, &data); err != nil {
 		return nil, err
+	}
+
+	if len(data.Errors) > 0 {
+		return nil, fmt.Errorf(data.Errors[0].Message)
+	}
+
+	if data.Data.LiveMeasurement == nil {
+		return nil, fmt.Errorf("no measurement data received")
 	}
 
 	return data.Data.LiveMeasurement, nil
