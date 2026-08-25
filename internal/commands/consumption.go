@@ -54,7 +54,6 @@ var consumptionCmd = &cobra.Command{
 			exitWithError("Failed to fetch consumption history: %v", err)
 		}
 
-
 		fmt.Println(formatter.FormatConsumptionHistory(history, res))
 	},
 }

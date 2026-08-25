@@ -2,7 +2,6 @@ package output
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -413,33 +412,52 @@ func TestMarkdownFormatter_FormatConsumptionHistory(t *testing.T) {
 }
 
 func TestFormatPeriod_DynamicResolution(t *testing.T) {
-	t1, _ := time.Parse(time.RFC3339, "2023-10-01T15:00:00Z")
-	t2, _ := time.Parse(time.RFC3339, "2023-10-01T16:00:00Z")
+	// Tibber returns bucket boundaries carrying the home's own offset, e.g.
+	// "2023-10-01T00:00:00.000+02:00". Everything coarser than HOURLY must be
+	// formatted in that offset, not the viewer's, or the label names a
+	// different day than the kWh it sits next to.
+	//
+	// time.Local is pinned to a zone far enough west that a regression to
+	// .Local() would pull each boundary back into the previous period,
+	// regardless of what zone the machine running the tests is in.
+	orig := time.Local
+	time.Local = time.FixedZone("TEST-11", -11*60*60)
+	t.Cleanup(func() { time.Local = orig })
+
+	cest := time.FixedZone("CEST", 2*60*60)
+	cet := time.FixedZone("CET", 1*60*60)
 
 	tests := []struct {
+		name       string
+		from       time.Time
 		resolution string
-		want       string // Partial string to check since Local() changes based on timezone
+		want       string
 	}{
-		{"DAILY", t1.Local().Format("2006-01-02")},
-		{"MONTHLY", t1.Local().Format("2006-01")},
-		{"ANNUAL", t1.Local().Format("2006")},
+		{"DAILY", time.Date(2023, 10, 1, 0, 0, 0, 0, cest), "DAILY", "2023-10-01"},
+		{"MONTHLY", time.Date(2023, 10, 1, 0, 0, 0, 0, cest), "MONTHLY", "2023-10"},
+		{"ANNUAL", time.Date(2024, 1, 1, 0, 0, 0, 0, cet), "ANNUAL", "2024"},
+		// 2023-10-02 is a Monday: the first day of ISO week 40.
+		{"WEEKLY", time.Date(2023, 10, 2, 0, 0, 0, 0, cest), "WEEKLY", "2023-W40"},
+		{"unknown resolution falls back to date", time.Date(2023, 10, 1, 0, 0, 0, 0, cest), "DECADE", "2023-10-01"},
 	}
 
 	for _, tt := range tests {
-		t.Run(string(tt.resolution), func(t *testing.T) {
-			got := formatPeriod(t1, t2, tt.resolution)
-			if !strings.Contains(got, tt.want) {
-				t.Errorf("formatPeriod() = %v, want to contain %v", got, tt.want)
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatPeriod(tt.from, tt.from.Add(time.Hour), tt.resolution)
+			if got != tt.want {
+				t.Errorf("formatPeriod(%s) = %q, want %q", tt.resolution, got, tt.want)
 			}
 		})
 	}
 
-	t.Run("WEEKLY", func(t *testing.T) {
-		got := formatPeriod(t1, t2, "WEEKLY")
-		year, week := t1.Local().ISOWeek()
-		want := fmt.Sprintf("%d-W%02d", year, week)
+	// HOURLY is the deliberate exception: an hourly label is about when the
+	// power was drawn, so it renders in the viewer's zone.
+	t.Run("HOURLY renders in local time", func(t *testing.T) {
+		from := time.Date(2023, 10, 1, 0, 0, 0, 0, cest)
+		got := formatPeriod(from, from.Add(time.Hour), "HOURLY")
+		want := "30 Sep 11:00 - 12:00"
 		if got != want {
-			t.Errorf("formatPeriod() = %v, want %v", got, want)
+			t.Errorf("formatPeriod(HOURLY) = %q, want %q", got, want)
 		}
 	})
 }

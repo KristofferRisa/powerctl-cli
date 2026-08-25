@@ -192,6 +192,10 @@ func (f *MarkdownFormatter) FormatConsumptionHistory(nodes []models.ConsumptionN
 	for _, n := range nodes {
 		period := formatPeriod(n.From, n.To, resolution)
 
+		if currency == "" && n.Currency != "" {
+			currency = n.Currency
+		}
+
 		consStr := "-"
 		if n.Consumption != nil {
 			consStr = fmt.Sprintf("%.2f", *n.Consumption)
@@ -202,9 +206,6 @@ func (f *MarkdownFormatter) FormatConsumptionHistory(nodes []models.ConsumptionN
 		if n.Cost != nil {
 			costStr = fmt.Sprintf("%.2f", *n.Cost)
 			totalCost += *n.Cost
-			if currency == "" && n.Currency != "" {
-				currency = n.Currency
-			}
 		}
 
 		priceStr := "-"
