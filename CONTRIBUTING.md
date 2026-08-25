@@ -62,13 +62,17 @@ you don't have a Tibber subscription or a Pulse.
 ### Common commands
 
 ```bash
+make check          # Every gate CI enforces — run this before opening a PR
 make build          # Build ./powerctl
 make test           # go test -v ./...
-make fmt            # Format code
+make fmt            # Format code (gofmt -s -w .)
 make lint           # golangci-lint (optional — not run in CI)
 make tidy           # go mod tidy
 make build-all      # Cross-compile linux/darwin/windows
 ```
+
+`make check` runs `check-fmt`, `vet`, `mod-verify` and `test-race`. The lint job
+in CI calls those same targets, so a green `make check` means a green lint job.
 
 ## Project layout
 
@@ -112,9 +116,8 @@ Keep these in mind — they're why the tool looks the way it does:
 
 ## Code style
 
-- Format with `gofmt -s -w .` before committing. CI enforces `gofmt -s`, and
-  note that `make fmt` runs plain `go fmt` — it does *not* apply `-s`, so run
-  `gofmt -s -w .` if CI complains.
+- Run `make fmt` before committing — it applies `gofmt -s -w .`, which is what
+  CI enforces.
 - `go vet ./...` must be clean. CI enforces this.
 - There's no `.golangci.yml` in the repo, so `make lint` is a local convenience
   rather than a gate. Don't feel obliged to chase its output.
@@ -127,6 +130,12 @@ go test ./...
 go test -race ./...                      # what CI runs on Linux/macOS
 go test -v ./internal/config -run TestLoad_EnvVarTakesPriority
 ```
+
+- CI runners are UTC. If a test formats or compares timestamps, pin the zone
+  explicitly (`time.FixedZone`, or set `time.Local` and restore it with
+  `t.Cleanup`) rather than relying on the machine's zone — otherwise the test
+  passes in CI and fails for contributors elsewhere. Check with
+  `TZ=Pacific/Auckland go test ./...`.
 
 - API tests mock HTTP responses (see `internal/api/client_test.go`).
 - Formatter tests compare rendered output (see `internal/output/formatter_test.go`).
@@ -148,9 +157,7 @@ reviewer can see at a glance what's done and what was deliberately left out.
 
 Make sure:
 
-- [ ] `go test ./...` passes locally
-- [ ] `gofmt -s -l .` reports nothing
-- [ ] `go vet ./...` is clean
+- [ ] `make check` passes locally (formatting, vet, mod verify, race tests)
 - [ ] Docs updated if behaviour changed
 - [ ] `--format json` output is unchanged, or the break is called out
 - [ ] The related issue is linked with `Closes #N` or `Relates to #N`

@@ -5,9 +5,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Build & Test Commands
 
 ```bash
+make check          # Run every gate CI enforces (fmt, vet, mod verify, race tests)
 make build          # Build binary to ./powerctl
 make test           # Run all tests
-make fmt            # Format code
+make fmt            # Format code (gofmt -s -w .)
 make lint           # Run golangci-lint
 make tidy           # Tidy go.mod
 make build-all      # Cross-compile for linux/darwin/windows
