@@ -18,6 +18,17 @@ A beautiful command-line tool for monitoring your Tibber power consumption and e
 
 ## Installation
 
+### Homebrew (macOS & Linux)
+
+```bash
+brew install kristofferrisa/powerctl/powerctl
+```
+
+Upgrade with `brew upgrade powerctl`.
+
+> Installed the older `powerctl-cli` formula? Replace it with
+> `brew uninstall powerctl-cli && brew install kristofferrisa/powerctl/powerctl`.
+
 ### Download Binary
 
 Download the latest release for your platform from [Releases](https://github.com/kristofferrisa/powerctl-cli/releases).
