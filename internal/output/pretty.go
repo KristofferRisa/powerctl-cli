@@ -352,13 +352,19 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 		fmt.Fprintf(&sb, rowFmt, period, BrightCyan, consBarStr, Reset, consStr, BrightYellow, costBarStr, Reset, costWithCurrency, priceStr)
 	}
 
-	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 80), Reset)
+	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 88), Reset)
 
-	footerFmt := "  %-12s %-26s %-26s %12s\n"
-	fmt.Fprintf(&sb, "%s"+footerFmt+"%s\n", Bold, "Totals",
+	footerFmt := "  %-20s %-26s %-26s %s\n"
+
+	avgPriceStr := ""
+	if totalConsumption > 0 {
+		avgPriceStr = fmt.Sprintf("%.2f %s/kWh", totalCost/totalConsumption, currency)
+	}
+
+	fmt.Fprintf(&sb, "%s"+footerFmt, Bold, "Totals",
 		fmt.Sprintf("%.2f kWh", totalConsumption),
 		fmt.Sprintf("%.2f %s", totalCost, currency),
-		"", Reset)
+		avgPriceStr+Reset)
 
 	return sb.String()
 }
