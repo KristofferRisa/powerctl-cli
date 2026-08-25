@@ -29,24 +29,23 @@ func New(format string) Formatter {
 	}
 }
 
-// formatPeriod formats the period dynamically based on resolution and in local time
+// formatPeriod formats the period dynamically based on resolution
 func formatPeriod(from time.Time, to time.Time, resolution string) string {
-	fromLocal := from.Local()
-	toLocal := to.Local()
-
 	switch resolution {
 	case "HOURLY":
+		fromLocal := from.Local()
+		toLocal := to.Local()
 		return fromLocal.Format("02 Jan 15:04") + " - " + toLocal.Format("15:04")
 	case "DAILY":
-		return fromLocal.Format("2006-01-02")
+		return from.Format("2006-01-02")
 	case "WEEKLY":
-		year, week := fromLocal.ISOWeek()
+		year, week := from.ISOWeek()
 		return fmt.Sprintf("%d-W%02d", year, week)
 	case "MONTHLY":
-		return fromLocal.Format("2006-01")
+		return from.Format("2006-01")
 	case "ANNUAL":
-		return fromLocal.Format("2006")
+		return from.Format("2006")
 	default:
-		return fromLocal.Format("2006-01-02")
+		return from.Format("2006-01-02")
 	}
 }

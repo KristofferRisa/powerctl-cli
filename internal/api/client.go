@@ -177,9 +177,7 @@ func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resol
 	}
 
 	if err != nil {
-		if strings.Contains(err.Error(), "does not exist") {
-			return nil, fmt.Errorf("home with ID %q not found", homeID)
-		}
+
 		return nil, err
 	}
 

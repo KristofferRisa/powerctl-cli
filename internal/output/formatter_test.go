@@ -2,9 +2,9 @@ package output
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
-	"fmt"
 	"time"
 
 	"github.com/kristofferrisa/powerctl-cli/internal/models"
@@ -433,7 +433,7 @@ func TestFormatPeriod_DynamicResolution(t *testing.T) {
 			}
 		})
 	}
-	
+
 	t.Run("WEEKLY", func(t *testing.T) {
 		got := formatPeriod(t1, t2, "WEEKLY")
 		year, week := t1.Local().ISOWeek()

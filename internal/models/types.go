@@ -102,4 +102,3 @@ type ConsumptionNode struct {
 type ConsumptionHistory struct {
 	Nodes []ConsumptionNode `json:"nodes"`
 }
-

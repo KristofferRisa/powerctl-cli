@@ -295,11 +295,11 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 
 		consStr := "-"
 		consBarStr := strings.Repeat(" ", 12) // Empty space if no data
-		
+
 		if n.Consumption != nil {
 			consStr = fmt.Sprintf("%.2f kWh", *n.Consumption)
 			totalConsumption += *n.Consumption
-			
+
 			// Build consumption bar
 			barWidth := 12
 			barLen := 0
@@ -353,7 +353,7 @@ func (f *PrettyFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNod
 	}
 
 	fmt.Fprintf(&sb, "  %s%s%s\n", Dim, strings.Repeat("─", 80), Reset)
-	
+
 	footerFmt := "  %-12s %-26s %-26s %12s\n"
 	fmt.Fprintf(&sb, "%s"+footerFmt+"%s\n", Bold, "Totals",
 		fmt.Sprintf("%.2f kWh", totalConsumption),
