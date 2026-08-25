@@ -38,8 +38,7 @@ This is a Go CLI for Tibber power consumption data using Cobra for commands.
 - WebSocket requires `User-Agent: powerctl-cli/1.0` header (Tibber rejects default Go client)
 - Exit code 1 for errors, graceful shutdown on SIGINT/SIGTERM for live streaming
 
-## Agent skills
+## Domain vocabulary
 
-### Domain docs
-
-Single-context repo layout. See `docs/agents/domain.md`.
+`CONTEXT.md` defines the terms this codebase uses for Tibber concepts
+(Consumption History, Resolution, Node). Use those terms, not synonyms.
