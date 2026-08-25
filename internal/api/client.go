@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kristofferrisa/powerctl-cli/internal/models"
@@ -176,7 +177,9 @@ func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resol
 	}
 
 	if err != nil {
-
+		if homeID != "" && strings.Contains(err.Error(), "does not exist") {
+			return nil, fmt.Errorf("home with ID %q not found: %w", homeID, err)
+		}
 		return nil, err
 	}
 
