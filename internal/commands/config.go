@@ -77,7 +77,7 @@ https://developer.tibber.com/settings/access-token`,
 
 			if choice != "" {
 				var idx int
-				fmt.Sscanf(choice, "%d", &idx)
+				_, _ = fmt.Sscanf(choice, "%d", &idx)
 				if idx > 0 && idx <= len(homes) {
 					homeID = homes[idx-1].ID
 				}
@@ -216,7 +216,7 @@ Available keys:
 		// Read existing config or create new
 		configData := make(map[string]string)
 		if data, err := os.ReadFile(configPath); err == nil {
-			yaml.Unmarshal(data, &configData)
+			_ = yaml.Unmarshal(data, &configData)
 		}
 
 		// Update value

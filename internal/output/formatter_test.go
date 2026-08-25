@@ -308,3 +308,156 @@ func TestPrettyFormatter_PowerColorByUsage(t *testing.T) {
 		})
 	}
 }
+
+func floatPtr(f float64) *float64 { return &f }
+
+func sampleConsumptionNodes() []models.ConsumptionNode {
+	t1, _ := time.Parse(time.RFC3339, "2023-10-01T00:00:00Z")
+	t2, _ := time.Parse(time.RFC3339, "2023-10-02T00:00:00Z")
+	t3, _ := time.Parse(time.RFC3339, "2023-10-03T00:00:00Z")
+
+	return []models.ConsumptionNode{
+		{
+			From:         t1,
+			To:           t2,
+			Consumption:  floatPtr(24.5),
+			Cost:         floatPtr(120.4),
+			UnitPrice:    floatPtr(4.9),
+			UnitPriceVAT: floatPtr(1.22),
+			Currency:     "NOK",
+		},
+		{
+			From:         t2,
+			To:           t3,
+			Consumption:  floatPtr(15.0),
+			Cost:         floatPtr(60.0),
+			UnitPrice:    floatPtr(4.0),
+			UnitPriceVAT: floatPtr(1.00),
+			Currency:     "NOK",
+		},
+	}
+}
+
+func TestJSONFormatter_FormatConsumptionHistory(t *testing.T) {
+	f := &JSONFormatter{}
+	nodes := sampleConsumptionNodes()
+
+	output := f.FormatConsumptionHistory(nodes, "DAILY")
+
+	var result []map[string]interface{}
+	if err := json.Unmarshal([]byte(output), &result); err != nil {
+		t.Fatalf("FormatConsumptionHistory() output is not valid JSON array: %v\nOutput: %s", err, output)
+	}
+
+	if len(result) != 2 {
+		t.Errorf("FormatConsumptionHistory() len = %d, want 2", len(result))
+	}
+
+	if result[0]["cost"].(float64) != 120.4 {
+		t.Errorf("FormatConsumptionHistory() cost = %v, want 120.4", result[0]["cost"])
+	}
+
+	// Must be multiline (indented)
+	if !strings.Contains(output, "\n") {
+		t.Error("FormatConsumptionHistory() output should be indented")
+	}
+}
+
+func TestPrettyFormatter_FormatConsumptionHistory(t *testing.T) {
+	f := &PrettyFormatter{}
+	nodes := sampleConsumptionNodes()
+
+	output := f.FormatConsumptionHistory(nodes, "DAILY")
+
+	// Check table columns exist
+	if !strings.Contains(output, "Period") || !strings.Contains(output, "Consumption") || !strings.Contains(output, "Total Cost") || !strings.Contains(output, "Avg Price") {
+		t.Error("FormatConsumptionHistory() missing expected table columns")
+	}
+
+	// Check data is present
+	if !strings.Contains(output, "24.5") || !strings.Contains(output, "120.4") {
+		t.Error("FormatConsumptionHistory() missing expected values")
+	}
+
+	// Check for Totals row
+	if !strings.Contains(output, "Totals") {
+		t.Error("FormatConsumptionHistory() missing Totals row")
+	}
+	if !strings.Contains(output, "39.5") { // 24.5 + 15.0
+		t.Error("FormatConsumptionHistory() missing correct total consumption")
+	}
+	if !strings.Contains(output, "180.4") { // 120.4 + 60.0
+		t.Error("FormatConsumptionHistory() missing correct total cost")
+	}
+}
+
+func TestMarkdownFormatter_FormatConsumptionHistory(t *testing.T) {
+	f := &MarkdownFormatter{}
+	nodes := sampleConsumptionNodes()
+
+	output := f.FormatConsumptionHistory(nodes, "DAILY")
+
+	if !strings.Contains(output, "| Period") {
+		t.Error("FormatConsumptionHistory() missing markdown table header")
+	}
+
+	if !strings.Contains(output, "120.4") {
+		t.Error("FormatConsumptionHistory() missing values")
+	}
+
+	// Check for Totals row in markdown too
+	if !strings.Contains(output, "Totals") || !strings.Contains(output, "39.5") {
+		t.Error("FormatConsumptionHistory() missing Totals row in markdown")
+	}
+}
+
+func TestFormatPeriod_DynamicResolution(t *testing.T) {
+	// Tibber returns bucket boundaries carrying the home's own offset, e.g.
+	// "2023-10-01T00:00:00.000+02:00". Everything coarser than HOURLY must be
+	// formatted in that offset, not the viewer's, or the label names a
+	// different day than the kWh it sits next to.
+	//
+	// time.Local is pinned to a zone far enough west that a regression to
+	// .Local() would pull each boundary back into the previous period,
+	// regardless of what zone the machine running the tests is in.
+	orig := time.Local
+	time.Local = time.FixedZone("TEST-11", -11*60*60)
+	t.Cleanup(func() { time.Local = orig })
+
+	cest := time.FixedZone("CEST", 2*60*60)
+	cet := time.FixedZone("CET", 1*60*60)
+
+	tests := []struct {
+		name       string
+		from       time.Time
+		resolution string
+		want       string
+	}{
+		{"DAILY", time.Date(2023, 10, 1, 0, 0, 0, 0, cest), "DAILY", "2023-10-01"},
+		{"MONTHLY", time.Date(2023, 10, 1, 0, 0, 0, 0, cest), "MONTHLY", "2023-10"},
+		{"ANNUAL", time.Date(2024, 1, 1, 0, 0, 0, 0, cet), "ANNUAL", "2024"},
+		// 2023-10-02 is a Monday: the first day of ISO week 40.
+		{"WEEKLY", time.Date(2023, 10, 2, 0, 0, 0, 0, cest), "WEEKLY", "2023-W40"},
+		{"unknown resolution falls back to date", time.Date(2023, 10, 1, 0, 0, 0, 0, cest), "DECADE", "2023-10-01"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatPeriod(tt.from, tt.from.Add(time.Hour), tt.resolution)
+			if got != tt.want {
+				t.Errorf("formatPeriod(%s) = %q, want %q", tt.resolution, got, tt.want)
+			}
+		})
+	}
+
+	// HOURLY is the deliberate exception: an hourly label is about when the
+	// power was drawn, so it renders in the viewer's zone.
+	t.Run("HOURLY renders in local time", func(t *testing.T) {
+		from := time.Date(2023, 10, 1, 0, 0, 0, 0, cest)
+		got := formatPeriod(from, from.Add(time.Hour), "HOURLY")
+		want := "30 Sep 11:00 - 12:00"
+		if got != want {
+			t.Errorf("formatPeriod(HOURLY) = %q, want %q", got, want)
+		}
+	})
+}

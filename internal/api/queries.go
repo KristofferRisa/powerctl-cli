@@ -86,7 +86,47 @@ const SubscriptionLiveMeasurement = `subscription($homeId: ID!) {
     voltagePhase3
     currentL1
     currentL2
-    currentL3
+	currentL3
     currency
+  }
+}`
+
+// QueryConsumptionHome fetches consumption history for a specific home directly
+const QueryConsumptionHome = `query($homeId: ID!, $resolution: EnergyResolution!, $last: Int!) {
+  viewer {
+    home(id: $homeId) {
+      id
+      consumption(resolution: $resolution, last: $last) {
+        nodes {
+          from
+          to
+          consumption
+          cost
+          unitPrice
+          unitPriceVAT
+          currency
+        }
+      }
+    }
+  }
+}`
+
+// QueryConsumptionHomes fetches consumption history for all homes (used as fallback)
+const QueryConsumptionHomes = `query($resolution: EnergyResolution!, $last: Int!) {
+  viewer {
+    homes {
+      id
+      consumption(resolution: $resolution, last: $last) {
+        nodes {
+          from
+          to
+          consumption
+          cost
+          unitPrice
+          unitPriceVAT
+          currency
+        }
+      }
+    }
   }
 }`

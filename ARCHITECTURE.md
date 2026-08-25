@@ -99,6 +99,7 @@ format: "markdown"               # Default output format
 | `config set` | key value | Confirmation | 0=OK, 1=Error |
 | `home` | - | Home info | 0=OK, 1=Error |
 | `prices` | - | Price list | 0=OK, 1=Error |
+| `consumption`| `--resolution`, `--last`, `--home-id` | Consumption history | 0=OK, 1=Error |
 | `live` | `--home-id` | Stream | 0=Clean exit, 1=Error |
 | `version` | - | Version, commit, build date | 0=OK |
 

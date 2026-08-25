@@ -63,7 +63,7 @@ func TestClient_GetHomes_Success(t *testing.T) {
 		}`
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response))
+		_, _ = w.Write([]byte(response))
 	}))
 	defer server.Close()
 
@@ -101,7 +101,7 @@ func TestClient_GetHomes_GraphQLError(t *testing.T) {
 		}`
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response))
+		_, _ = w.Write([]byte(response))
 	}))
 	defer server.Close()
 
@@ -120,7 +120,7 @@ func TestClient_GetHomes_GraphQLError(t *testing.T) {
 func TestClient_GetHomes_HTTPError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte("Unauthorized"))
+		_, _ = w.Write([]byte("Unauthorized"))
 	}))
 	defer server.Close()
 
@@ -173,7 +173,7 @@ func TestClient_GetPrices_Success(t *testing.T) {
 		}`
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response))
+		_, _ = w.Write([]byte(response))
 	}))
 	defer server.Close()
 
@@ -215,7 +215,7 @@ func TestClient_GetPrices_NoPriceInfo(t *testing.T) {
 		}`
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(response))
+		_, _ = w.Write([]byte(response))
 	}))
 	defer server.Close()
 
@@ -267,5 +267,78 @@ func TestGraphQLRequest_Marshaling(t *testing.T) {
 
 	if result["query"] != req.Query {
 		t.Errorf("query = %v, want %v", result["query"], req.Query)
+	}
+}
+
+func TestClient_GetConsumptionHistory_Success(t *testing.T) {
+	now := time.Now().UTC().Format(time.RFC3339)
+	yesterday := time.Now().UTC().AddDate(0, 0, -1).Format(time.RFC3339)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := `{
+			"data": {
+				"viewer": {
+					"home": {
+						"id": "home-123",
+						"consumption": {
+							"nodes": [
+								{
+									"from": "` + yesterday + `",
+									"to": "` + now + `",
+									"consumption": 24.5,
+									"cost": 120.4,
+									"unitPrice": 4.9,
+									"unitPriceVAT": 1.22,
+									"currency": "NOK"
+								},
+								{
+									"from": "` + now + `",
+									"to": "2099-01-01T00:00:00Z",
+									"consumption": null,
+									"cost": null,
+									"unitPrice": null,
+									"unitPriceVAT": null,
+									"currency": "NOK"
+								}
+							]
+						}
+					}
+				}
+			}
+		}`
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(response))
+	}))
+	defer server.Close()
+
+	client := NewClient("test-token")
+	client.endpoint = server.URL
+
+	history, err := client.GetConsumptionHistory(context.Background(), "home-123", "DAILY", 2)
+	if err != nil {
+		t.Fatalf("GetConsumptionHistory() error = %v", err)
+	}
+
+	if len(history) != 2 {
+		t.Fatalf("len(history) = %d, want 2", len(history))
+	}
+
+	// Check first node (valid data)
+	n1 := history[0]
+	if n1.Consumption == nil || *n1.Consumption != 24.5 {
+		t.Errorf("n1.Consumption = %v, want 24.5", n1.Consumption)
+	}
+	if n1.Cost == nil || *n1.Cost != 120.4 {
+		t.Errorf("n1.Cost = %v, want 120.4", n1.Cost)
+	}
+
+	// Check second node (null data)
+	n2 := history[1]
+	if n2.Consumption != nil {
+		t.Errorf("n2.Consumption = %v, want nil", n2.Consumption)
+	}
+	if n2.Cost != nil {
+		t.Errorf("n2.Cost = %v, want nil", n2.Cost)
 	}
 }

@@ -32,3 +32,18 @@ func (f *JSONFormatter) FormatLiveMeasurement(m *models.LiveMeasurement) string 
 	data, _ := json.Marshal(m)
 	return string(data)
 }
+
+// FormatConsumptionHistory formats consumption nodes as indented JSON
+func (f *JSONFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNode, resolution string) string {
+	// Marshal a nil slice as [] rather than null so consumers can iterate the
+	// result unconditionally (e.g. `powerctl consumption --format json | jq '.[]'`)
+	if nodes == nil {
+		nodes = []models.ConsumptionNode{}
+	}
+
+	b, err := json.MarshalIndent(nodes, "", "  ")
+	if err != nil {
+		return "[]"
+	}
+	return string(b)
+}

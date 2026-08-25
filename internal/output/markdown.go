@@ -15,33 +15,33 @@ type MarkdownFormatter struct{}
 func (f *MarkdownFormatter) FormatHome(home *models.HomeResponse) string {
 	var sb strings.Builder
 
-	sb.WriteString(fmt.Sprintf("## %s\n\n", homeTitle(home)))
+	fmt.Fprintf(&sb, "## %s\n\n", homeTitle(home))
 
 	sb.WriteString("| Property | Value |\n")
 	sb.WriteString("|----------|-------|\n")
-	sb.WriteString(fmt.Sprintf("| ID | `%s` |\n", home.ID))
+	fmt.Fprintf(&sb, "| ID | `%s` |\n", home.ID)
 
 	if home.Address.Address1 != "" {
-		sb.WriteString(fmt.Sprintf("| Address | %s |\n", formatAddress(&home.Address)))
+		fmt.Fprintf(&sb, "| Address | %s |\n", formatAddress(&home.Address))
 	}
 	if home.Size > 0 {
-		sb.WriteString(fmt.Sprintf("| Size | %d m² |\n", home.Size))
+		fmt.Fprintf(&sb, "| Size | %d m² |\n", home.Size)
 	}
 	if home.Type != "" {
-		sb.WriteString(fmt.Sprintf("| Type | %s |\n", home.Type))
+		fmt.Fprintf(&sb, "| Type | %s |\n", home.Type)
 	}
 	if home.NumberOfResidents > 0 {
-		sb.WriteString(fmt.Sprintf("| Residents | %d |\n", home.NumberOfResidents))
+		fmt.Fprintf(&sb, "| Residents | %d |\n", home.NumberOfResidents)
 	}
 	if home.MainFuseSize > 0 {
-		sb.WriteString(fmt.Sprintf("| Main Fuse | %d A |\n", home.MainFuseSize))
+		fmt.Fprintf(&sb, "| Main Fuse | %d A |\n", home.MainFuseSize)
 	}
 
 	pulseStatus := "No"
 	if home.Features.RealTimeConsumptionEnabled {
 		pulseStatus = "Yes"
 	}
-	sb.WriteString(fmt.Sprintf("| Pulse Enabled | %s |\n", pulseStatus))
+	fmt.Fprintf(&sb, "| Pulse Enabled | %s |\n", pulseStatus)
 
 	return sb.String()
 }
@@ -71,10 +71,10 @@ func (f *MarkdownFormatter) FormatPrices(prices *models.PriceInfo, homeID string
 	// Current price
 	if prices.Current != nil {
 		sb.WriteString("## Current Price\n\n")
-		sb.WriteString(fmt.Sprintf("**%.2f %s/kWh** (%s)\n\n",
+		fmt.Fprintf(&sb, "**%.2f %s/kWh** (%s)\n\n",
 			prices.Current.Total,
 			prices.Current.Currency,
-			levelEmoji(prices.Current.Level)))
+			levelEmoji(prices.Current.Level))
 	}
 
 	// Today's prices
@@ -102,23 +102,23 @@ func (f *MarkdownFormatter) FormatLiveMeasurement(m *models.LiveMeasurement) str
 	sb.WriteString("## Live Power\n\n")
 	sb.WriteString("| Metric | Value |\n")
 	sb.WriteString("|--------|-------|\n")
-	sb.WriteString(fmt.Sprintf("| Power | %.0f W |\n", m.Power))
+	fmt.Fprintf(&sb, "| Power | %.0f W |\n", m.Power)
 	if m.PowerProduction > 0 {
-		sb.WriteString(fmt.Sprintf("| Production | %.0f W |\n", m.PowerProduction))
+		fmt.Fprintf(&sb, "| Production | %.0f W |\n", m.PowerProduction)
 	}
-	sb.WriteString(fmt.Sprintf("| Today | %.2f kWh |\n", m.AccumulatedConsumption))
-	sb.WriteString(fmt.Sprintf("| Cost | %.2f %s |\n", m.AccumulatedCost, m.Currency))
+	fmt.Fprintf(&sb, "| Today | %.2f kWh |\n", m.AccumulatedConsumption)
+	fmt.Fprintf(&sb, "| Cost | %.2f %s |\n", m.AccumulatedCost, m.Currency)
 
 	if m.VoltagePhase1 > 0 {
-		sb.WriteString(fmt.Sprintf("| Voltage | %.1f / %.1f / %.1f V |\n",
-			m.VoltagePhase1, m.VoltagePhase2, m.VoltagePhase3))
+		fmt.Fprintf(&sb, "| Voltage | %.1f / %.1f / %.1f V |\n",
+			m.VoltagePhase1, m.VoltagePhase2, m.VoltagePhase3)
 	}
 	if m.CurrentL1 > 0 {
-		sb.WriteString(fmt.Sprintf("| Current | %.1f / %.1f / %.1f A |\n",
-			m.CurrentL1, m.CurrentL2, m.CurrentL3))
+		fmt.Fprintf(&sb, "| Current | %.1f / %.1f / %.1f A |\n",
+			m.CurrentL1, m.CurrentL2, m.CurrentL3)
 	}
 
-	sb.WriteString(fmt.Sprintf("| Updated | %s |\n", m.Timestamp.Format(time.RFC3339)))
+	fmt.Fprintf(&sb, "| Updated | %s |\n", m.Timestamp.Format(time.RFC3339))
 
 	return sb.String()
 }
@@ -154,8 +154,8 @@ func formatPriceTable(prices []models.Price) string {
 
 	for _, p := range prices {
 		hour := p.StartsAt.Local().Format("15:04")
-		sb.WriteString(fmt.Sprintf("| %s | %.2f %s | %s |\n",
-			hour, p.Total, p.Currency, levelEmoji(p.Level)))
+		fmt.Fprintf(&sb, "| %s | %.2f %s | %s |\n",
+			hour, p.Total, p.Currency, levelEmoji(p.Level))
 	}
 
 	return sb.String()
@@ -176,4 +176,47 @@ func levelEmoji(level string) string {
 	default:
 		return level
 	}
+}
+
+func (f *MarkdownFormatter) FormatConsumptionHistory(nodes []models.ConsumptionNode, resolution string) string {
+	var sb strings.Builder
+
+	sb.WriteString("# Consumption History\n\n")
+	sb.WriteString("| Period | Consumption (kWh) | Total Cost | Avg Price |\n")
+	sb.WriteString("|--------|------------------:|-----------:|----------:|\n")
+
+	var totalConsumption float64
+	var totalCost float64
+	currency := ""
+
+	for _, n := range nodes {
+		period := formatPeriod(n.From, n.To, resolution)
+
+		if currency == "" && n.Currency != "" {
+			currency = n.Currency
+		}
+
+		consStr := "-"
+		if n.Consumption != nil {
+			consStr = fmt.Sprintf("%.2f", *n.Consumption)
+			totalConsumption += *n.Consumption
+		}
+
+		costStr := "-"
+		if n.Cost != nil {
+			costStr = fmt.Sprintf("%.2f", *n.Cost)
+			totalCost += *n.Cost
+		}
+
+		priceStr := "-"
+		if n.UnitPrice != nil {
+			priceStr = fmt.Sprintf("%.2f", *n.UnitPrice)
+		}
+
+		fmt.Fprintf(&sb, "| %s | %s | %s | %s |\n", period, consStr, costStr, priceStr)
+	}
+
+	fmt.Fprintf(&sb, "| **Totals** | **%.2f** | **%.2f %s** | |\n", totalConsumption, totalCost, currency)
+
+	return sb.String()
 }
