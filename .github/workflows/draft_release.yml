@@ -67,6 +67,9 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PAT with write access to KristofferRisa/homebrew-powerctl, so
+          # GoReleaser can push the updated cask to the tap.
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
       - name: Comment on draft
         run: |

@@ -24,11 +24,11 @@ builds:
       - -X github.com/kristofferrisa/powerctl-cli/internal/commands.BuildDate={{.Date}}
 
 archives:
-  - format: tar.gz
+  - formats: [tar.gz]
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
       - goos: windows
-        format: zip
+        formats: [zip]
 
 checksum:
   name_template: 'checksums.txt'
@@ -42,6 +42,33 @@ changelog:
       - '^chore:'
       - Merge pull request
       - Merge branch
+
+# Publishes the Homebrew cask to github.com/KristofferRisa/homebrew-powerctl on
+# every tagged release, so the tap is generated output and never hand-edited.
+# Requires HOMEBREW_TAP_TOKEN (PAT with write access to the tap) in the release job.
+homebrew_casks:
+  - name: powerctl
+    binaries: [powerctl]
+    homepage: "https://github.com/KristofferRisa/powerctl-cli"
+    description: "CLI tool for monitoring electricity consumption and tracking power costs via Tibber"
+    commit_msg_template: "chore: powerctl {{ .Tag }}"
+    # Never point the tap at a prerelease (e.g. the -rc tags draft_release.yml cuts).
+    skip_upload: "auto"
+    # The release binaries are unsigned, so macOS would quarantine them.
+    hooks:
+      post:
+        install: |
+          if OS.mac?
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/powerctl"]
+          end
+    repository:
+      owner: KristofferRisa
+      name: homebrew-powerctl
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: github-actions[bot]
+      email: github-actions[bot]@users.noreply.github.com
 
 release:
   github:
