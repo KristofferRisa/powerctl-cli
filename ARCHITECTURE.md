@@ -1,4 +1,4 @@
-# Tibber CLI Architecture
+# powerctl Architecture
 
 A cross-platform CLI tool for Tibber power consumption data, built following Unix philosophy.
 
@@ -19,28 +19,35 @@ powerctl-cli/
 ├── internal/
 │   ├── api/
 │   │   ├── client.go            # GraphQL HTTP client
+│   │   ├── client_test.go
 │   │   ├── queries.go           # GraphQL query definitions
-│   │   └── websocket.go         # WebSocket for live streaming
+│   │   ├── websocket.go         # WebSocket for live streaming
+│   │   └── websocket_test.go
 │   ├── commands/
 │   │   ├── root.go              # Root command, global flags
 │   │   ├── config.go            # `powerctl config` - setup wizard
 │   │   ├── home.go              # `powerctl home`
 │   │   ├── prices.go            # `powerctl prices`
+│   │   ├── consumption.go       # `powerctl consumption`
 │   │   ├── live.go              # `powerctl live`
 │   │   └── version.go           # `powerctl version`
 │   ├── config/
-│   │   └── config.go            # Configuration loading
+│   │   ├── config.go            # Configuration loading
+│   │   └── config_test.go
 │   ├── models/
 │   │   └── types.go             # Data structures
 │   └── output/
 │       ├── formatter.go         # Formatter interface
+│       ├── formatter_test.go
 │       ├── pretty.go            # Beautiful CLI output (default)
 │       ├── json.go              # JSON formatter
 │       └── markdown.go          # Markdown formatter
+├── .goreleaser.yml              # Build, release and Homebrew cask publishing
 ├── go.mod
 ├── go.sum
 ├── Makefile
 ├── README.md
+├── CONTEXT.md                   # Domain vocabulary
 ├── CONTRIBUTING.md
 └── ARCHITECTURE.md
 ```
@@ -86,9 +93,12 @@ format: "markdown"               # Default output format
 #### WebSocket Client (`websocket.go`)
 
 - Protocol: `graphql-transport-ws`
-- Reconnection: Exponential backoff (max 5 retries)
-- Heartbeat: 30-second ping interval
+- Requires `User-Agent: powerctl-cli/1.0` — Tibber rejects the default Go client
+- Reconnection: none. A read or parse error ends the stream and exits 1
+- Heartbeat: none. The connection lives as long as the server keeps it open
 - Graceful shutdown on SIGINT/SIGTERM
+- A GraphQL error payload or a null `liveMeasurement` becomes an error rather
+  than a nil measurement handed to the formatter (see #13)
 
 ### Commands (`internal/commands/`)
 
@@ -111,6 +121,7 @@ type Formatter interface {
     FormatHomes(homes []models.HomeResponse) string
     FormatPrices(prices *models.PriceInfo, homeID string) string
     FormatLiveMeasurement(m *models.LiveMeasurement) string
+    FormatConsumptionHistory(nodes []models.ConsumptionNode, resolution string) string
 }
 ```
 
@@ -170,20 +181,19 @@ Authorization: Bearer <token>
 |----------|----------|
 | Network errors | Log and exit with code 1 |
 | Auth errors | Clear message: "Invalid token" |
-| No Pulse | Exit 2 with "Pulse not enabled" |
+| No Pulse | Exit 1 with "Pulse not enabled" |
 | Parse errors | Log raw response, exit 1 |
 
 ## Cross-Platform Build
 
-```makefile
-PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64
+`make build-all` fans out to per-OS targets:
 
-build-all:
-    @for platform in $(PLATFORMS); do \
-        GOOS=$${platform%/*} GOARCH=$${platform#*/} \
-        go build -o dist/powerctl-$${platform%/*}-$${platform#*/} ./cmd/powerctl; \
-    done
+```makefile
+build-all: build-linux build-darwin build-windows
 ```
+
+covering linux/amd64, linux/arm64, darwin/amd64, darwin/arm64 and
+windows/amd64. Release builds do not use this — see below.
 
 ## Dependencies
 
@@ -191,7 +201,7 @@ build-all:
 |---------|---------|-----|
 | `spf13/cobra` | CLI framework | Industry standard (kubectl, hugo) |
 | `spf13/viper` | Config loading | Handles env + file + flags |
-| `nhooyr/websocket` | WebSocket | Pure Go, well maintained |
+| `coder/websocket` | WebSocket | Pure Go, well maintained (formerly `nhooyr.io/websocket`) |
 | `gopkg.in/yaml.v3` | Config file writing | Used by `config init`/`config set` |
 
 ## Testing Strategy
@@ -199,14 +209,36 @@ build-all:
 ```
 internal/
 ├── api/
-│   └── client_test.go       # Mock HTTP responses
+│   ├── client_test.go       # Mock HTTP responses
+│   └── websocket_test.go    # Live payload parsing and error mapping
 ├── config/
 │   └── config_test.go       # Config resolution order
 └── output/
     └── formatter_test.go    # Formatter output assertions
 ```
 
+`make check` runs the same gates as CI: `gofmt` check, `go vet`, `go mod verify`
+and `go test -race ./...`.
+
 Demo token for testing: `5K4MVS-OjfWhK_4yrjOlFe1F6kJXPVf7eQYggo8ebAE`
+
+## Release Pipeline
+
+Tagging `v*.*.*` triggers `.github/workflows/release.yml`, which runs the test
+suite and then GoReleaser:
+
+1. Cross-compiles six targets — linux, darwin and windows on amd64 and arm64.
+   These are the release binaries, not `make build-all`.
+2. Archives them (`tar.gz`, `zip` on windows) and writes `checksums.txt`.
+3. Creates the GitHub release, with grouped notes and an install footer built
+   from the `changelog` and `release` blocks in `.goreleaser.yml`.
+4. Generates `Casks/powerctl.rb` and pushes it to
+   [KristofferRisa/homebrew-powerctl](https://github.com/KristofferRisa/homebrew-powerctl),
+   authenticated with the `HOMEBREW_TAP_TOKEN` secret.
+
+The tap is generated output — never hand-edit the cask; it is overwritten by
+the next release. `replace_existing_artifacts: true` lets a failed release job
+be re-run without colliding with assets the first attempt already uploaded.
 
 ## Security Considerations
 
