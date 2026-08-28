@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -111,7 +112,7 @@ func (c *LiveClient) Subscribe(ctx context.Context, handler func(*models.LiveMea
 			case "next":
 				measurement, err := c.parsePayload(msg.Payload)
 				if err != nil {
-					continue
+					return err
 				}
 				if err := handler(measurement); err != nil {
 					return err
@@ -159,10 +160,25 @@ func (c *LiveClient) parsePayload(payload json.RawMessage) (*models.LiveMeasurem
 		Data struct {
 			LiveMeasurement *models.LiveMeasurement `json:"liveMeasurement"`
 		} `json:"data"`
+		Errors []struct {
+			Message string `json:"message"`
+		} `json:"errors"`
 	}
 
 	if err := json.Unmarshal(payload, &data); err != nil {
 		return nil, err
+	}
+
+	if len(data.Errors) > 0 {
+		msg := data.Errors[0].Message
+		if msg == "user not authorized to access home" || msg == "home not found" {
+			return nil, errors.New("invalid or non-existing home ID")
+		}
+		return nil, errors.New(msg)
+	}
+
+	if data.Data.LiveMeasurement == nil {
+		return nil, errors.New("no measurement data received (invalid home ID?)")
 	}
 
 	return data.Data.LiveMeasurement, nil
