@@ -76,3 +76,7 @@ release:
     name: powerctl-cli
   draft: false
   prerelease: auto
+  # Re-running a tagged Release (or a retry after a partial publish) must replace
+  # assets already on the GitHub release. Without this, GoReleaser 422s with
+  # already_exists and never reaches the Homebrew tap push. That is what failed v0.4.0.
+  replace_existing_artifacts: true
