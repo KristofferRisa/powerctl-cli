@@ -35,13 +35,36 @@ checksum:
 
 changelog:
   sort: asc
+  # Read subjects from the local git log rather than the GitHub compare API:
+  # no network dependency, so the changelog cannot fail the release, and it is
+  # reproducible in a local `goreleaser release --skip=publish` dry run.
+  use: git
+  # Short SHAs, not full ones: GitHub autolinks 7+ char hashes in a release body,
+  # so each entry gets a clickable commit link without the 40-char noise.
+  abbrev: 7
   filters:
+    # Scopes are optional in these prefixes: a bare '^chore:' misses
+    # 'chore(release):' and the commit leaks into the notes.
     exclude:
-      - '^docs:'
-      - '^test:'
-      - '^chore:'
+      - '^docs(\(.+\))?!?:'
+      - '^test(\(.+\))?!?:'
+      - '^chore(\(.+\))?!?:'
+      - '^ci(\(.+\))?!?:'
+      - '^style(\(.+\))?!?:'
       - Merge pull request
       - Merge branch
+  # Outside contributors do not always use conventional prefixes, so these match
+  # a plain 'Fix ...' subject too, and the catch-all group makes sure nothing is
+  # silently dropped.
+  groups:
+    - title: "⚡ Features"
+      regexp: '(?i)^(feat|feature)(\([[:word:]]+\))?!?:?\s.+$'
+      order: 0
+    - title: "🐛 Bug fixes"
+      regexp: '(?i)^(fix|bugfix)(\([[:word:]]+\))?!?:?\s.+$'
+      order: 1
+    - title: "🔧 Other changes"
+      order: 999
 
 # Publishes the Homebrew cask to github.com/KristofferRisa/homebrew-powerctl on
 # every tagged release, so the tap is generated output and never hand-edited.
@@ -80,3 +103,40 @@ release:
   # assets already on the GitHub release. Without this, GoReleaser 422s with
   # already_exists and never reaches the Homebrew tap push. That is what failed v0.4.0.
   replace_existing_artifacts: true
+  header: |
+    ## powerctl {{ .Tag }}
+
+    A CLI for monitoring Tibber power consumption and electricity prices.
+  footer: |
+
+    ## Install
+
+    **Homebrew** (macOS & Linux)
+
+    ```bash
+    brew install kristofferrisa/powerctl/powerctl
+    ```
+
+    Already installed? `brew upgrade powerctl`
+
+    **Go**
+
+    ```bash
+    go install github.com/kristofferrisa/powerctl-cli/cmd/powerctl@{{ .Tag }}
+    ```
+
+    **Binary** — download the archive for your platform from the assets below, then:
+
+    ```bash
+    tar -xzf {{ .ProjectName }}_{{ .Version }}_linux_amd64.tar.gz
+    sudo install -m 755 powerctl /usr/local/bin/powerctl
+    powerctl version
+    ```
+
+    ## Verify your download
+
+    ```bash
+    sha256sum --check --ignore-missing checksums.txt
+    ```
+
+    **Full changelog:** https://github.com/kristofferrisa/powerctl-cli/compare/{{ .PreviousTag }}...{{ .Tag }}

@@ -1,4 +1,4 @@
-# Tibber CLI
+# powerctl
 
 A beautiful command-line tool for monitoring your Tibber power consumption and electricity prices.
 
@@ -84,9 +84,9 @@ powerctl --config /path/to/config.yaml home
 powerctl version
 ```
 ```
-powerctl-cli version 1.0.0
+powerctl-cli version 0.4.2
 Git commit: a1b2c3d
-Built: 2026-01-31T10:30:00Z
+Built: 2026-08-28T15:30:00Z
 ```
 
 #### View Home Information
@@ -164,6 +164,14 @@ powerctl live
 
 Press `Ctrl+C` to stop streaming.
 
+Monitor a specific home with `--home-id` (otherwise the home from your config
+is used, or the first one on the account):
+```bash
+powerctl live --home-id 96a14971-525a-4420-aae9-e5aefaf46a81
+```
+
+`powerctl consumption` takes the same flag.
+
 ### Output Formats
 
 Default output is beautiful colored CLI. Change format with `--format`:
@@ -233,6 +241,9 @@ make lint           # Run linter (requires golangci-lint)
 **"Pulse not enabled"**
 - Ensure your Tibber Pulse is connected and active
 - Check status at [tibber.com](https://tibber.com)
+
+**"invalid or non-existing home ID"**
+- The ID passed to `--home-id` is not on your account. List valid IDs with `powerctl home`
 
 **Live stream disconnects**
 - Rate limit is 20 connections/hour
