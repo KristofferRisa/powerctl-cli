@@ -164,6 +164,39 @@ Make sure:
 
 CI (lint, test, build) must be green before merge.
 
+## Releasing
+
+Maintainers only. Releases are cut from a tag — there is no manual build or
+upload step, and the Homebrew tap is never edited by hand.
+
+```bash
+git checkout main && git pull
+git tag -a v0.4.3 -m "v0.4.3"
+git push origin v0.4.3
+```
+
+That triggers `.github/workflows/release.yml`, which runs the tests and then
+GoReleaser: cross-compiles six targets, publishes the GitHub release with
+grouped notes, and pushes the generated cask to
+[KristofferRisa/homebrew-powerctl](https://github.com/KristofferRisa/homebrew-powerctl).
+
+Before tagging, it is worth a dry run — it renders the release notes without
+publishing anything:
+
+```bash
+goreleaser check
+goreleaser release --clean --skip=publish,announce
+cat dist/CHANGELOG.md
+```
+
+Notes are grouped from commit subjects. Conventional prefixes (`feat:`, `fix:`)
+land in their sections; anything else falls into "Other changes" rather than
+being dropped. `docs:`, `test:`, `chore:`, `ci:` and `style:` are filtered out,
+with or without a scope.
+
+If a release job fails partway, re-run it — `replace_existing_artifacts: true`
+lets it overwrite assets the first attempt already uploaded.
+
 ## AI-assisted contributions
 
 Using AI tooling to write your contribution is fine — this project is built with

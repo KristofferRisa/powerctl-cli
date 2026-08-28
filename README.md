@@ -3,9 +3,10 @@
 A beautiful command-line tool for monitoring your Tibber power consumption and electricity prices.
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/kristofferrisa/powerctl-cli" alt="Release">
-  <img src="https://img.shields.io/github/actions/workflow/status/kristofferrisa/powerctl-cli/test.yml" alt="Tests">
-  <img src="https://img.shields.io/github/license/kristofferrisa/powerctl-cli" alt="License">
+  <a href="https://github.com/kristofferrisa/powerctl-cli/releases/latest"><img src="https://img.shields.io/github/v/release/kristofferrisa/powerctl-cli?label=release" alt="Latest release"></a>
+  <a href="https://github.com/kristofferrisa/powerctl-cli/releases"><img src="https://img.shields.io/github/release-date/kristofferrisa/powerctl-cli?label=release%20notes" alt="Release notes"></a>
+  <a href="https://github.com/kristofferrisa/powerctl-cli/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/kristofferrisa/powerctl-cli/test.yml?branch=main&amp;label=tests" alt="Tests"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/kristofferrisa/powerctl-cli" alt="License"></a>
 </p>
 
 ## Features
@@ -247,7 +248,8 @@ make lint           # Run linter (requires golangci-lint)
 
 **Live stream disconnects**
 - Rate limit is 20 connections/hour
-- WebSocket auto-reconnects on temporary failures
+- There is no automatic reconnect — the command exits with code 1 and the error.
+  Re-run it, or wrap it in a supervisor if you need it to stay up
 
 ## Contributing
 
