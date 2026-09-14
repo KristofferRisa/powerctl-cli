@@ -73,17 +73,23 @@ homebrew_casks:
   - name: powerctl
     binaries: [powerctl]
     homepage: "https://github.com/KristofferRisa/powerctl-cli"
-    description: "CLI tool for monitoring electricity consumption and tracking power costs via Tibber"
+    description: "Monitor electricity consumption and track power costs via Tibber"
     commit_msg_template: "chore: powerctl {{ .Tag }}"
     # Never point the tap at a prerelease (e.g. the -rc tags draft_release.yml cuts).
     skip_upload: "auto"
     # The release binaries are unsigned, so macOS would quarantine them.
-    hooks:
-      post:
-        install: |
-          if OS.mac?
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/powerctl"]
-          end
+    #
+    # GoReleaser's hooks.post.install always renders the deprecated Ruby
+    # `postflight do` stanza (Homebrew's Cask/InstallSteps cop now requires
+    # `postflight_steps`), and there is no hooks field that emits it as of
+    # the pinned "~> v2" GoReleaser release, so it's written directly via
+    # custom_block instead. See https://github.com/KristofferRisa/powerctl-cli/issues/24.
+    custom_block: |
+      postflight_steps do
+        on_macos do
+          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "powerctl"], chdir: "."
+        end
+      end
     repository:
       owner: KristofferRisa
       name: homebrew-powerctl
