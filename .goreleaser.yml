@@ -84,6 +84,11 @@ homebrew_casks:
     # `postflight_steps`), and there is no hooks field that emits it as of
     # the pinned "~> v2" GoReleaser release, so it's written directly via
     # custom_block instead. See https://github.com/KristofferRisa/powerctl-cli/issues/24.
+    #
+    # Revert to hooks.post.install_steps once GoReleaser v2.19 ships
+    # (goreleaser/goreleaser#6873) — that emits the stanza in the right
+    # position and restores the absolute staged path. Tracked in
+    # https://github.com/KristofferRisa/powerctl-cli/issues/26.
     custom_block: |
       postflight_steps do
         on_macos do
