@@ -144,6 +144,26 @@ powerctl consumption --resolution daily --last 7
   Totals       39.50 kWh                  180.40 NOK
 ```
 
+To fetch a date range instead of the last N periods, use `--from` and an
+optional `--to`:
+
+```bash
+powerctl consumption --resolution hourly --from 2026-01-01                # Jan 1 to now
+powerctl consumption --resolution hourly --from 2026-01-01 --to 2026-07-01
+```
+
+- `--from` and `--to` take `YYYY-MM-DD`, read as midnight in the home's time
+  zone, or an RFC 3339 timestamp. `--from` is inclusive and `--to` is exclusive.
+- Every Node that overlaps the range is shown, so with a coarse resolution the
+  first and last Node may extend past `--from` and `--to` (`--resolution monthly
+  --from 2026-01-15` starts with all of January).
+- `--to` needs `--from`, and `--from` can't be combined with `--last`.
+- Tibber returns at most 744 Nodes (31 days of hourly data) per request, so
+  longer ranges and `--last` values above 744 are fetched in several requests.
+- If Tibber's history starts after the requested range does, a notice is
+  printed on stderr. Stdout only ever has the Nodes, so `-f json` output stays
+  safe to pipe into `jq`.
+
 #### Stream Live Power Consumption
 ```bash
 powerctl live

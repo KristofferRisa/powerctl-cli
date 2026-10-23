@@ -91,12 +91,18 @@ const SubscriptionLiveMeasurement = `subscription($homeId: ID!) {
   }
 }`
 
-// QueryConsumptionHome fetches consumption history for a specific home directly
-const QueryConsumptionHome = `query($homeId: ID!, $resolution: EnergyResolution!, $last: Int!) {
+// QueryConsumptionHome fetches consumption history for a specific home directly.
+// $before is a cursor from a previous page's pageInfo.startCursor; omit it to
+// get the newest Nodes.
+const QueryConsumptionHome = `query($homeId: ID!, $resolution: EnergyResolution!, $last: Int!, $before: String) {
   viewer {
     home(id: $homeId) {
       id
-      consumption(resolution: $resolution, last: $last) {
+      consumption(resolution: $resolution, last: $last, before: $before) {
+        pageInfo {
+          startCursor
+          hasPreviousPage
+        }
         nodes {
           from
           to
@@ -112,11 +118,15 @@ const QueryConsumptionHome = `query($homeId: ID!, $resolution: EnergyResolution!
 }`
 
 // QueryConsumptionHomes fetches consumption history for all homes (used as fallback)
-const QueryConsumptionHomes = `query($resolution: EnergyResolution!, $last: Int!) {
+const QueryConsumptionHomes = `query($resolution: EnergyResolution!, $last: Int!, $before: String) {
   viewer {
     homes {
       id
-      consumption(resolution: $resolution, last: $last) {
+      consumption(resolution: $resolution, last: $last, before: $before) {
+        pageInfo {
+          startCursor
+          hasPreviousPage
+        }
         nodes {
           from
           to
@@ -127,6 +137,24 @@ const QueryConsumptionHomes = `query($resolution: EnergyResolution!, $last: Int!
           currency
         }
       }
+    }
+  }
+}`
+
+// QueryTimeZoneHome fetches the time zone of a specific home
+const QueryTimeZoneHome = `query($homeId: ID!) {
+  viewer {
+    home(id: $homeId) {
+      timeZone
+    }
+  }
+}`
+
+// QueryTimeZoneHomes fetches the time zone of all homes (used as fallback)
+const QueryTimeZoneHomes = `{
+  viewer {
+    homes {
+      timeZone
     }
   }
 }`
