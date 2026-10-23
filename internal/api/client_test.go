@@ -539,6 +539,26 @@ func TestClient_GetConsumptionHistory_Range(t *testing.T) {
 	}
 }
 
+func TestClient_GetConsumptionHistory_RangeInsideNodes(t *testing.T) {
+	// Bounds that fall inside a Node keep that Node at both ends, the way a
+	// mid-month --from keeps the whole month with --resolution monthly.
+	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	ps := newPagingServer(t, 5000, end)
+	r := ConsumptionRange{
+		From: ps.nodeFrom(3512).Add(30 * time.Minute),
+		To:   ps.nodeFrom(4000).Add(30 * time.Minute),
+	}
+
+	nodes, _, err := ps.client().GetConsumptionHistory(context.Background(), "home-123", "HOURLY", r)
+	if err != nil {
+		t.Fatalf("GetConsumptionHistory() error = %v", err)
+	}
+	if len(nodes) != 489 {
+		t.Fatalf("len(nodes) = %d, want 489", len(nodes))
+	}
+	assertContiguous(t, nodes, ps.nodeFrom(3512))
+}
+
 func TestClient_GetConsumptionHistory_RangeStopsPaging(t *testing.T) {
 	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	ps := newPagingServer(t, 50000, end)

@@ -10,10 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	// Embeds the time zone database, so --from/--to can be read in the home's
-	// time zone on systems without one installed (Windows).
-	_ "time/tzdata"
-
 	"github.com/spf13/cobra"
 
 	"github.com/kristofferrisa/powerctl-cli/internal/api"
@@ -39,6 +35,8 @@ var consumptionCmd = &cobra.Command{
 Bound the Consumption History either with --last, or with --from and an
 optional --to. --from and --to take YYYY-MM-DD, read as midnight in the home's
 time zone, or an RFC 3339 timestamp. --from is inclusive and --to is exclusive.
+Every Node that overlaps the range is shown, so with a coarse Resolution the
+first and last Node may extend past --from and --to.
 
 Tibber returns at most 744 Nodes per request, so longer ranges are fetched in
 several requests.`,

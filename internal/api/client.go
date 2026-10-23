@@ -164,7 +164,8 @@ func (c *Client) GetPrices(ctx context.Context, homeID string) (*models.PriceInf
 
 // ConsumptionRange bounds a Consumption History fetch. Set either Last, or From
 // with an optional To. From is inclusive and To is exclusive; a zero To means
-// up to now.
+// up to now. Every Node that overlaps the range is returned, so with a coarse
+// Resolution the first and last Node may extend past From and To.
 type ConsumptionRange struct {
 	Last int
 	From time.Time
@@ -228,11 +229,12 @@ func prependOlder(page, nodes []models.ConsumptionNode) []models.ConsumptionNode
 	return append(merged, nodes...)
 }
 
-// trimToRange keeps the Nodes that start in [from, to). A zero to has no upper bound.
+// trimToRange keeps the Nodes that overlap [from, to), so a period that is only
+// partly inside the range is kept at both ends. A zero to has no upper bound.
 func trimToRange(nodes []models.ConsumptionNode, from, to time.Time) []models.ConsumptionNode {
 	trimmed := make([]models.ConsumptionNode, 0, len(nodes))
 	for _, n := range nodes {
-		if n.From.Before(from) || (!to.IsZero() && !n.From.Before(to)) {
+		if !n.To.After(from) || (!to.IsZero() && !n.From.Before(to)) {
 			continue
 		}
 		trimmed = append(trimmed, n)
