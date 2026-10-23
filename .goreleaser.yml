@@ -78,18 +78,14 @@ homebrew_casks:
     # Never point the tap at a prerelease (e.g. the -rc tags draft_release.yml cuts).
     skip_upload: "auto"
     # The release binaries are unsigned, so macOS would quarantine them.
-    #
-    # GoReleaser's hooks.post.install always renders the deprecated Ruby
-    # `postflight do` stanza (Homebrew's Cask/InstallSteps cop now requires
-    # `postflight_steps`), and there is no hooks field that emits it as of
-    # the pinned "~> v2" GoReleaser release, so it's written directly via
-    # custom_block instead. See https://github.com/KristofferRisa/powerctl-cli/issues/24.
-    custom_block: |
-      postflight_steps do
-        on_macos do
-          run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "powerctl"], chdir: "."
-        end
-      end
+    # install_steps renders Homebrew's `postflight_steps` DSL, which only
+    # accepts declarative steps (run, remove, on_macos, ...), not raw Ruby.
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/powerctl"]
+          end
     repository:
       owner: KristofferRisa
       name: homebrew-powerctl
