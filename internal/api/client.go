@@ -19,6 +19,9 @@ const (
 
 	// DefaultTimeout for HTTP requests
 	DefaultTimeout = 30 * time.Second
+
+	// MaxConsumptionPage is the most Nodes Tibber returns for one consumption request
+	MaxConsumptionPage = 744
 )
 
 // Client handles communication with Tibber API
@@ -159,11 +162,93 @@ func (c *Client) GetPrices(ctx context.Context, homeID string) (*models.PriceInf
 	return nil, fmt.Errorf("no price information found")
 }
 
-// GetConsumptionHistory fetches historical consumption data
-func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resolution string, last int) ([]models.ConsumptionNode, error) {
+// ConsumptionRange bounds a Consumption History fetch. Set either Last, or From
+// with an optional To. From is inclusive and To is exclusive; a zero To means
+// up to now.
+type ConsumptionRange struct {
+	Last int
+	From time.Time
+	To   time.Time
+}
+
+// GetConsumptionHistory fetches historical consumption data, oldest Node first.
+// Tibber returns at most MaxConsumptionPage Nodes per request, so longer ranges
+// are fetched page by page, backwards from now. short reports that Tibber's
+// history ended before the requested range was covered.
+func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resolution string, r ConsumptionRange) (nodes []models.ConsumptionNode, short bool, err error) {
+	var before string
+	for {
+		size := MaxConsumptionPage
+		if r.Last > 0 && r.Last-len(nodes) < size {
+			size = r.Last - len(nodes)
+		}
+
+		page, err := c.getConsumptionPage(ctx, homeID, resolution, size, before)
+		if err != nil {
+			return nil, false, err
+		}
+		fetched := len(nodes)
+		nodes = prependOlder(page.Nodes, nodes)
+
+		if r.Last > 0 && len(nodes) >= r.Last {
+			break
+		}
+		if r.Last == 0 && len(nodes) > 0 && !nodes[0].From.After(r.From) {
+			break
+		}
+		// A page with no older Nodes means the history has ended, and also
+		// stops a cursor that never moves from looping forever.
+		if !page.PageInfo.HasPreviousPage || len(nodes) == fetched {
+			short = true
+			break
+		}
+		before = page.PageInfo.StartCursor
+	}
+
+	if r.Last == 0 {
+		nodes = trimToRange(nodes, r.From, r.To)
+	}
+	return nodes, short, nil
+}
+
+// prependOlder puts page in front of nodes, dropping any Node in page that is
+// not older than the oldest Node already fetched, so a page boundary never
+// duplicates a Node.
+func prependOlder(page, nodes []models.ConsumptionNode) []models.ConsumptionNode {
+	if len(nodes) == 0 {
+		return page
+	}
+	oldest := nodes[0].From
+	merged := make([]models.ConsumptionNode, 0, len(page)+len(nodes))
+	for _, n := range page {
+		if n.From.Before(oldest) {
+			merged = append(merged, n)
+		}
+	}
+	return append(merged, nodes...)
+}
+
+// trimToRange keeps the Nodes that start in [from, to). A zero to has no upper bound.
+func trimToRange(nodes []models.ConsumptionNode, from, to time.Time) []models.ConsumptionNode {
+	trimmed := make([]models.ConsumptionNode, 0, len(nodes))
+	for _, n := range nodes {
+		if n.From.Before(from) || (!to.IsZero() && !n.From.Before(to)) {
+			continue
+		}
+		trimmed = append(trimmed, n)
+	}
+	return trimmed
+}
+
+// getConsumptionPage fetches the last Nodes before the cursor, or the newest
+// Nodes when before is empty
+func (c *Client) getConsumptionPage(ctx context.Context, homeID string, resolution string, last int, before string) (*models.ConsumptionHistory, error) {
 	variables := map[string]interface{}{
 		"resolution": resolution,
 		"last":       last,
+	}
+	if before != "" {
+		variables["before"] = before
 	}
 
 	var data json.RawMessage
@@ -202,7 +287,7 @@ func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resol
 	}
 
 	if homeID != "" && result.Viewer.Home != nil {
-		return result.Viewer.Home.Consumption.Nodes, nil
+		return &result.Viewer.Home.Consumption, nil
 	}
 
 	if homeID != "" {
@@ -214,5 +299,50 @@ func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resol
 	}
 
 	// Return first home's consumption
-	return result.Viewer.Homes[0].Consumption.Nodes, nil
+	return &result.Viewer.Homes[0].Consumption, nil
+}
+
+// GetTimeZone fetches the time zone of a home, or of the first home when
+// homeID is empty
+func (c *Client) GetTimeZone(ctx context.Context, homeID string) (*time.Location, error) {
+	var data json.RawMessage
+	var err error
+
+	if homeID != "" {
+		data, err = c.execute(ctx, QueryTimeZoneHome, map[string]interface{}{"homeId": homeID})
+	} else {
+		data, err = c.execute(ctx, QueryTimeZoneHomes, nil)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	type home struct {
+		TimeZone string `json:"timeZone"`
+	}
+	var result struct {
+		Viewer struct {
+			Home  *home  `json:"home"`
+			Homes []home `json:"homes"`
+		} `json:"viewer"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		return nil, fmt.Errorf("failed to parse time zone: %w", err)
+	}
+
+	var name string
+	switch {
+	case homeID != "" && result.Viewer.Home != nil:
+		name = result.Viewer.Home.TimeZone
+	case homeID == "" && len(result.Viewer.Homes) > 0:
+		name = result.Viewer.Homes[0].TimeZone
+	default:
+		return nil, fmt.Errorf("no home found to read the time zone from")
+	}
+
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		return nil, fmt.Errorf("unknown home time zone %q: %w", name, err)
+	}
+	return loc, nil
 }

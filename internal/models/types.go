@@ -100,5 +100,12 @@ type ConsumptionNode struct {
 
 // ConsumptionHistory represents a history of consumption nodes
 type ConsumptionHistory struct {
-	Nodes []ConsumptionNode `json:"nodes"`
+	PageInfo PageInfo          `json:"pageInfo"`
+	Nodes    []ConsumptionNode `json:"nodes"`
+}
+
+// PageInfo holds the cursor for fetching the page of Nodes before this one
+type PageInfo struct {
+	StartCursor     string `json:"startCursor"`
+	HasPreviousPage bool   `json:"hasPreviousPage"`
 }
