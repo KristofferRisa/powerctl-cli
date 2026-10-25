@@ -90,7 +90,11 @@ format: "markdown"               # Default output format
 
 - Single HTTP client instance (connection pooling)
 - Timeout: 30 seconds
-- Retry: None (fail fast)
+- Retry: None (fail fast). The one exception is Consumption History: when
+  `--to` is more than one page in the past, the first request sends a `before`
+  cursor built from `--to` (the cursor format is undocumented), and if that
+  errors, returns no Nodes or returns a page that does not reach `--to`, the
+  fetch pages from now instead
 - Auth: Bearer token header
 
 #### WebSocket Client (`websocket.go`)

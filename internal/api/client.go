@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -29,6 +30,7 @@ type Client struct {
 	token      string
 	httpClient *http.Client
 	endpoint   string
+	now        func() time.Time
 }
 
 // NewClient creates a new Tibber API client
@@ -39,6 +41,7 @@ func NewClient(token string) *Client {
 			Timeout: DefaultTimeout,
 		},
 		endpoint: GraphQLEndpoint,
+		now:      time.Now,
 	}
 }
 
@@ -174,10 +177,12 @@ type ConsumptionRange struct {
 
 // GetConsumptionHistory fetches historical consumption data, oldest Node first.
 // Tibber returns at most MaxConsumptionPage Nodes per request, so longer ranges
-// are fetched page by page, backwards from now. short reports that Tibber's
-// history ended before the requested range was covered.
+// are fetched page by page, backwards from now, or from To when it is more than
+// one page in the past. short reports that Tibber's history ended before the
+// requested range was covered.
 func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resolution string, r ConsumptionRange) (nodes []models.ConsumptionNode, short bool, err error) {
-	var before string
+	before := c.cursorBefore(resolution, r.To)
+	fromBuiltCursor := before != ""
 	for {
 		size := MaxConsumptionPage
 		if r.Last > 0 && r.Last-len(nodes) < size {
@@ -185,6 +190,15 @@ func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resol
 		}
 
 		page, err := c.getConsumptionPage(ctx, homeID, resolution, size, before)
+		if fromBuiltCursor {
+			fromBuiltCursor = false
+			// Tibber may have changed its cursor format, so if the page is not
+			// the one that ends at To, page from now instead
+			if err != nil || len(page.Nodes) == 0 || page.Nodes[len(page.Nodes)-1].To.Before(r.To) {
+				before = ""
+				continue
+			}
+		}
 		if err != nil {
 			return nil, false, err
 		}
@@ -210,6 +224,27 @@ func (c *Client) GetConsumptionHistory(ctx context.Context, homeID string, resol
 		nodes = trimToRange(nodes, r.From, r.To)
 	}
 	return nodes, short, nil
+}
+
+// longestNode is the most time one Node can cover at each Resolution
+var longestNode = map[string]time.Duration{
+	"HOURLY":  time.Hour,
+	"DAILY":   25 * time.Hour, // a day that leaves daylight saving time
+	"WEEKLY":  7*24*time.Hour + time.Hour,
+	"MONTHLY": 31*24*time.Hour + time.Hour,
+	"ANNUAL":  366*24*time.Hour + time.Hour,
+}
+
+// cursorBefore builds the cursor Tibber would give a Node starting at to, so
+// a range in the past can start paging at to instead of now. The cursor format
+// is undocumented (it is the base64 of a Node's from timestamp), so it is only
+// built when to is more than one page in the past, where it saves a request.
+func (c *Client) cursorBefore(resolution string, to time.Time) string {
+	span, ok := longestNode[resolution]
+	if to.IsZero() || !ok || !to.Before(c.now().Add(-MaxConsumptionPage*span)) {
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString([]byte(to.Format("2006-01-02T15:04:05.000-07:00")))
 }
 
 // prependOlder puts page in front of nodes, dropping any Node in page that is
