@@ -235,13 +235,33 @@ var longestNode = map[string]time.Duration{
 	"ANNUAL":  366*24*time.Hour + time.Hour,
 }
 
+// pageSize is the most Nodes Tibber returns for one request at each
+// Resolution, whatever last asks for. ANNUAL has not been measured.
+var pageSize = map[string]int{
+	"HOURLY":  MaxConsumptionPage,
+	"DAILY":   31,
+	"WEEKLY":  52,
+	"MONTHLY": 12,
+	"ANNUAL":  MaxConsumptionPage,
+}
+
 // cursorBefore builds the cursor Tibber would give a Node starting at to, so
 // a range in the past can start paging at to instead of now. The cursor format
 // is undocumented (it is the base64 of a Node's from timestamp), so it is only
 // built when to is more than one page in the past, where it saves a request.
 func (c *Client) cursorBefore(resolution string, to time.Time) string {
 	span, ok := longestNode[resolution]
-	if to.IsZero() || !ok || !to.Before(c.now().Add(-MaxConsumptionPage*span)) {
+	if to.IsZero() || !ok {
+		return ""
+	}
+	// Tibber reads a cursor as the start of the Node it falls in, so a to
+	// inside an hour moves to the end of it to keep that Node in the page
+	if resolution == "HOURLY" {
+		if start := to.Truncate(time.Hour); start.Before(to) {
+			to = start.Add(time.Hour)
+		}
+	}
+	if !to.Before(c.now().Add(-time.Duration(pageSize[resolution]) * span)) {
 		return ""
 	}
 	return base64.StdEncoding.EncodeToString([]byte(to.Format("2006-01-02T15:04:05.000-07:00")))

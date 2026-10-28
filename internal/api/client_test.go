@@ -427,7 +427,8 @@ func (ps *pagingServer) cursor(i int) string {
 	return base64.StdEncoding.EncodeToString([]byte(ps.nodeFrom(i).Format("2006-01-02T15:04:05.000-07:00")))
 }
 
-// cursorIndex is the number of Nodes that start before the cursor's timestamp
+// cursorIndex is the number of Nodes that start before the Node the cursor's
+// timestamp falls in, as Tibber reads it
 func (ps *pagingServer) cursorIndex(cursor string) (int, error) {
 	raw, err := base64.StdEncoding.DecodeString(cursor)
 	if err != nil {
@@ -440,7 +441,7 @@ func (ps *pagingServer) cursorIndex(cursor string) (int, error) {
 	if !at.After(ps.start) {
 		return 0, nil
 	}
-	return int((at.Sub(ps.start) + time.Hour - 1) / time.Hour), nil
+	return int(at.Sub(ps.start) / time.Hour), nil
 }
 
 func (ps *pagingServer) client() *Client {
@@ -623,6 +624,60 @@ func TestClient_GetConsumptionHistory_OldRangeSkipsNewerPages(t *testing.T) {
 		t.Fatalf("len(nodes) = %d, want 744", len(nodes))
 	}
 	assertContiguous(t, nodes, r.From)
+}
+
+func TestClient_GetConsumptionHistory_OldRangeEndingMidHour(t *testing.T) {
+	// Tibber reads a 13:30 cursor as 13:00, which would leave out the Node
+	// that --to falls in and force the fallback
+	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	ps := newPagingServer(t, 20000, end)
+	r := ConsumptionRange{From: ps.nodeFrom(10100), To: ps.nodeFrom(10744).Add(30 * time.Minute)}
+
+	nodes, _, err := ps.client().GetConsumptionHistory(context.Background(), "home-123", "HOURLY", r)
+	if err != nil {
+		t.Fatalf("GetConsumptionHistory() error = %v", err)
+	}
+	if len(ps.requests) != 1 {
+		t.Errorf("requests = %d, want 1", len(ps.requests))
+	}
+	if len(nodes) != 645 {
+		t.Fatalf("len(nodes) = %d, want 645", len(nodes))
+	}
+	assertContiguous(t, nodes, r.From)
+}
+
+func TestClient_CursorBefore(t *testing.T) {
+	now := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name       string
+		resolution string
+		to         time.Time
+		want       time.Time // zero when no cursor is built
+	}{
+		{name: "hourly within one page", resolution: "HOURLY", to: now.AddDate(0, 0, -30)},
+		{name: "hourly past one page", resolution: "HOURLY", to: now.AddDate(0, 0, -40), want: now.AddDate(0, 0, -40)},
+		{name: "hourly mid-hour rounds up", resolution: "HOURLY", to: now.AddDate(0, 0, -40).Add(-90 * time.Minute), want: now.AddDate(0, 0, -40).Add(-time.Hour)},
+		{name: "daily within one page", resolution: "DAILY", to: now.AddDate(0, 0, -20)},
+		{name: "daily past one page", resolution: "DAILY", to: now.AddDate(0, -2, 0), want: now.AddDate(0, -2, 0)},
+		{name: "weekly past one page", resolution: "WEEKLY", to: now.AddDate(-2, 0, 0), want: now.AddDate(-2, 0, 0)},
+		{name: "monthly within one page", resolution: "MONTHLY", to: now.AddDate(0, -10, 0)},
+		{name: "monthly past one page", resolution: "MONTHLY", to: now.AddDate(-2, 0, 0), want: now.AddDate(-2, 0, 0)},
+		{name: "no to", resolution: "HOURLY"},
+		{name: "unknown resolution", resolution: "QUARTER_HOURLY", to: now.AddDate(-1, 0, 0)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClient("test-token")
+			client.now = func() time.Time { return now }
+			want := ""
+			if !tt.want.IsZero() {
+				want = base64.StdEncoding.EncodeToString([]byte(tt.want.Format("2006-01-02T15:04:05.000-07:00")))
+			}
+			if got := client.cursorBefore(tt.resolution, tt.to); got != want {
+				t.Errorf("cursorBefore() = %q, want %q", got, want)
+			}
+		})
+	}
 }
 
 func TestClient_GetConsumptionHistory_RecentRangePagesFromNow(t *testing.T) {
