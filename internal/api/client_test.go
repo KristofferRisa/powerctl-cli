@@ -2,12 +2,12 @@ package api
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -350,17 +350,19 @@ func TestClient_GetConsumptionHistory_Success(t *testing.T) {
 }
 
 // pagingServer fakes Tibber's cursor pagination over total hourly Nodes, the
-// newest ending at end. Cursors are Node indexes. It records the variables of
+// newest ending at end. Like Tibber, a cursor is the base64 of a timestamp and
+// before returns the Nodes that start earlier. It records the variables of
 // every request it serves.
 type pagingServer struct {
 	*httptest.Server
 	start    time.Time
+	end      time.Time
 	requests []map[string]interface{}
 }
 
 func newPagingServer(t *testing.T, total int, end time.Time) *pagingServer {
 	t.Helper()
-	ps := &pagingServer{start: end.Add(-time.Duration(total) * time.Hour)}
+	ps := &pagingServer{start: end.Add(-time.Duration(total) * time.Hour), end: end}
 	ps.Server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req GraphQLRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -374,7 +376,13 @@ func newPagingServer(t *testing.T, total int, end time.Time) *pagingServer {
 		}
 		hi := total
 		if before, ok := req.Variables["before"].(string); ok {
-			hi, _ = strconv.Atoi(before)
+			i, err := ps.cursorIndex(before)
+			if err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = fmt.Fprintf(w, `{"errors":[{"message":%q}]}`, err.Error())
+				return
+			}
+			hi = min(i, total)
 		}
 		lo := hi - last
 		if lo < 0 {
@@ -392,7 +400,7 @@ func newPagingServer(t *testing.T, total int, end time.Time) *pagingServer {
 			})
 		}
 		history := models.ConsumptionHistory{
-			PageInfo: models.PageInfo{StartCursor: strconv.Itoa(lo), HasPreviousPage: lo > 0},
+			PageInfo: models.PageInfo{StartCursor: ps.cursor(lo), HasPreviousPage: lo > 0},
 			Nodes:    nodes,
 		}
 		body, _ := json.Marshal(map[string]interface{}{
@@ -414,9 +422,32 @@ func (ps *pagingServer) nodeFrom(i int) time.Time {
 	return ps.start.Add(time.Duration(i) * time.Hour)
 }
 
+// cursor is Tibber's cursor for Node i: the base64 of its from timestamp
+func (ps *pagingServer) cursor(i int) string {
+	return base64.StdEncoding.EncodeToString([]byte(ps.nodeFrom(i).Format("2006-01-02T15:04:05.000-07:00")))
+}
+
+// cursorIndex is the number of Nodes that start before the Node the cursor's
+// timestamp falls in, as Tibber reads it
+func (ps *pagingServer) cursorIndex(cursor string) (int, error) {
+	raw, err := base64.StdEncoding.DecodeString(cursor)
+	if err != nil {
+		return 0, fmt.Errorf("invalid cursor %q", cursor)
+	}
+	at, err := time.Parse("2006-01-02T15:04:05.000-07:00", string(raw))
+	if err != nil {
+		return 0, fmt.Errorf("invalid cursor %q", cursor)
+	}
+	if !at.After(ps.start) {
+		return 0, nil
+	}
+	return int(at.Sub(ps.start) / time.Hour), nil
+}
+
 func (ps *pagingServer) client() *Client {
 	client := NewClient("test-token")
 	client.endpoint = ps.URL
+	client.now = func() time.Time { return ps.end }
 	return client
 }
 
@@ -573,6 +604,148 @@ func TestClient_GetConsumptionHistory_RangeStopsPaging(t *testing.T) {
 	}
 }
 
+func TestClient_GetConsumptionHistory_OldRangeSkipsNewerPages(t *testing.T) {
+	// The range is 13 pages back; paging from now would take 14 requests
+	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	ps := newPagingServer(t, 20000, end)
+	r := ConsumptionRange{From: ps.nodeFrom(10000), To: ps.nodeFrom(10744)}
+
+	nodes, short, err := ps.client().GetConsumptionHistory(context.Background(), "home-123", "HOURLY", r)
+	if err != nil {
+		t.Fatalf("GetConsumptionHistory() error = %v", err)
+	}
+	if short {
+		t.Error("short = true, want false")
+	}
+	if len(ps.requests) != 1 {
+		t.Errorf("requests = %d, want 1", len(ps.requests))
+	}
+	if len(nodes) != 744 {
+		t.Fatalf("len(nodes) = %d, want 744", len(nodes))
+	}
+	assertContiguous(t, nodes, r.From)
+}
+
+func TestClient_GetConsumptionHistory_OldRangeEndingMidHour(t *testing.T) {
+	// Tibber reads a 13:30 cursor as 13:00, which would leave out the Node
+	// that --to falls in and force the fallback
+	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	ps := newPagingServer(t, 20000, end)
+	r := ConsumptionRange{From: ps.nodeFrom(10100), To: ps.nodeFrom(10744).Add(30 * time.Minute)}
+
+	nodes, _, err := ps.client().GetConsumptionHistory(context.Background(), "home-123", "HOURLY", r)
+	if err != nil {
+		t.Fatalf("GetConsumptionHistory() error = %v", err)
+	}
+	if len(ps.requests) != 1 {
+		t.Errorf("requests = %d, want 1", len(ps.requests))
+	}
+	if len(nodes) != 645 {
+		t.Fatalf("len(nodes) = %d, want 645", len(nodes))
+	}
+	assertContiguous(t, nodes, r.From)
+}
+
+func TestClient_CursorBefore(t *testing.T) {
+	now := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name       string
+		resolution string
+		to         time.Time
+		want       time.Time // zero when no cursor is built
+	}{
+		{name: "hourly within one page", resolution: "HOURLY", to: now.AddDate(0, 0, -30)},
+		{name: "hourly past one page", resolution: "HOURLY", to: now.AddDate(0, 0, -40), want: now.AddDate(0, 0, -40)},
+		{name: "hourly mid-hour rounds up", resolution: "HOURLY", to: now.AddDate(0, 0, -40).Add(-90 * time.Minute), want: now.AddDate(0, 0, -40).Add(-time.Hour)},
+		{name: "daily within one page", resolution: "DAILY", to: now.AddDate(0, 0, -20)},
+		{name: "daily past one page", resolution: "DAILY", to: now.AddDate(0, -2, 0), want: now.AddDate(0, -2, 0)},
+		{name: "weekly past one page", resolution: "WEEKLY", to: now.AddDate(-2, 0, 0), want: now.AddDate(-2, 0, 0)},
+		{name: "monthly within one page", resolution: "MONTHLY", to: now.AddDate(0, -10, 0)},
+		{name: "monthly past one page", resolution: "MONTHLY", to: now.AddDate(-2, 0, 0), want: now.AddDate(-2, 0, 0)},
+		{name: "no to", resolution: "HOURLY"},
+		{name: "unknown resolution", resolution: "QUARTER_HOURLY", to: now.AddDate(-1, 0, 0)},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewClient("test-token")
+			client.now = func() time.Time { return now }
+			want := ""
+			if !tt.want.IsZero() {
+				want = base64.StdEncoding.EncodeToString([]byte(tt.want.Format("2006-01-02T15:04:05.000-07:00")))
+			}
+			if got := client.cursorBefore(tt.resolution, tt.to); got != want {
+				t.Errorf("cursorBefore() = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestClient_GetConsumptionHistory_RecentRangePagesFromNow(t *testing.T) {
+	// A built cursor saves nothing when --to is inside the newest page, so the
+	// undocumented cursor format is not relied on
+	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	ps := newPagingServer(t, 5000, end)
+	r := ConsumptionRange{From: ps.nodeFrom(4000), To: ps.nodeFrom(4500)}
+
+	if _, _, err := ps.client().GetConsumptionHistory(context.Background(), "home-123", "HOURLY", r); err != nil {
+		t.Fatalf("GetConsumptionHistory() error = %v", err)
+	}
+	if _, ok := ps.requests[0]["before"]; ok {
+		t.Error("first request sent a before cursor")
+	}
+}
+
+func TestClient_GetConsumptionHistory_BuiltCursorFallsBack(t *testing.T) {
+	// If Tibber changes its cursor format, the cursor built from --to stops
+	// working; the client must still return the range by paging from now.
+	tests := []struct {
+		name      string
+		answer    string // the response to the built cursor
+		misplaced int    // or, with no answer, the Node Tibber reads the cursor as
+	}{
+		{name: "rejected", answer: `{"errors":[{"message":"invalid cursor"}]}`},
+		{name: "no Nodes", answer: `{"data":{"viewer":{"home":{"consumption":{"pageInfo":{"hasPreviousPage":false},"nodes":[]}}}}}`},
+		{name: "placed before --from", misplaced: 200},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+			ps := newPagingServer(t, 5000, end)
+			inner := ps.Config.Handler
+			ps.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if len(ps.requests) == 0 && tt.answer != "" {
+					ps.requests = append(ps.requests, nil)
+					_, _ = io.WriteString(w, tt.answer)
+					return
+				}
+				if len(ps.requests) == 0 {
+					r.Body = io.NopCloser(strings.NewReader(fmt.Sprintf(`{"variables":{"last":744,"before":%q}}`, ps.cursor(tt.misplaced))))
+				}
+				inner.ServeHTTP(w, r)
+			})
+			r := ConsumptionRange{From: ps.nodeFrom(1000), To: ps.nodeFrom(1500)}
+
+			nodes, short, err := ps.client().GetConsumptionHistory(context.Background(), "home-123", "HOURLY", r)
+			if err != nil {
+				t.Fatalf("GetConsumptionHistory() error = %v", err)
+			}
+			if short {
+				t.Error("short = true, want false")
+			}
+			if len(ps.requests) < 2 {
+				t.Fatalf("requests = %d, want a fallback request", len(ps.requests))
+			}
+			if _, ok := ps.requests[1]["before"]; ok {
+				t.Error("request after the fallback sent a before cursor")
+			}
+			if len(nodes) != 500 {
+				t.Fatalf("len(nodes) = %d, want 500", len(nodes))
+			}
+			assertContiguous(t, nodes, r.From)
+		})
+	}
+}
+
 func TestClient_GetConsumptionHistory_RangeBeforeHistory(t *testing.T) {
 	end := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
 	ps := newPagingServer(t, 1000, end)
@@ -610,9 +783,9 @@ func TestClient_GetConsumptionHistory_OverlappingPages(t *testing.T) {
 		}
 		_ = json.Unmarshal(rec.Body.Bytes(), &resp)
 		h := resp.Data.Viewer.Home.Consumption
-		start, _ := strconv.Atoi(h.PageInfo.StartCursor)
+		start, _ := ps.cursorIndex(h.PageInfo.StartCursor)
 		if h.PageInfo.HasPreviousPage {
-			h.PageInfo.StartCursor = strconv.Itoa(start + 1)
+			h.PageInfo.StartCursor = ps.cursor(start + 1)
 		}
 		body, _ := json.Marshal(map[string]interface{}{
 			"data": map[string]interface{}{"viewer": map[string]interface{}{"home": map[string]interface{}{"consumption": h}}},
